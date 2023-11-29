@@ -14,12 +14,18 @@ class TCPhandler():
         self.reserved = '{0:032b}'.format(0)
 
         self.asic_id = int(0).to_bytes(1, 'big')
-        self.spi_format = int(0).to_bytes(1, 'big')
+        self.spi_format = int(2).to_bytes(1, 'big')
         
         # Setup of socket
         tcp_s = socket.socket()
         tcp_s.connect((self.server_ip, self.port))
         self.tcp_s = tcp_s
+
+
+    def setSpiFormat(self, spi_format: int) -> None:
+        """Updates spi format."""
+        self.spi_format = int(spi_format).to_bytes(1, 'big')
+        print(f'spi_format set to {self.spi_format}')
 
 
     def packet_count_increment(self) -> None:
@@ -59,10 +65,18 @@ class TCPhandler():
             data_length: Variable length of register data to write.
         """
         packet_type = 0x10
-        packet_header_array = self.getPacketHeader(packet_type=packet_type, data_length=data_length)
-        print(f'Packet header array: {packet_header_array}')
-        data_field = address 
-        print(f'Data field: {data_field}]')
+        packet_data_length = 3 + data_length
+        packet_header_array = self.getPacketHeader(packet_type=packet_type, data_length=packet_data_length)
+        # print(f'Packet header array: {packet_header_array}')
+        
+        reg_addr_bytes = address.to_bytes(2, 'big')
+        reg_length_bytes = data_length.to_bytes(1, 'big')
+        data_bytes = value.to_bytes(data_length, 'big')
+        data_field = reg_addr_bytes + reg_length_bytes + data_bytes
+        
+        write_packet = packet_header_array + data_field
+        self.tcp_s.sendall(write_packet)
+        print(f'Write packet: {write_packet}]')
         self.packet_count_increment()
 
 
@@ -93,57 +107,74 @@ class TCPhandler():
         data = np.frombuffer(data, dtype=np.uint8)
         return data
 
-    
-    def setAsicSpiBitFieldByAddr(self, reg_addr, bit_addr, bit_value, asic_id: int=0, system_id: int=0):
-        """
-        Set a SPI Register Bit Field Local Value.
-        
-        Args:
-            reg_addr: ASIC SPI address.
-            bit_addr: Bit field address in SPI register
-            bit_value: 
-            asic_id: ...
-            system_id: ...
-        """
 
-
-    def writeAsicSpiRegister(self, reg_addr, bit_addr, bit_value, asic_id: int=0, system_id: int=0) -> None:
+    def writeAsicSpiRegister(self, reg_addr, reg_length, asic_bit_length, write_data, asic_id: int=0, system_id: int=0) -> None:
         """
         Write an ASIC SPI register
         """
         packet_type = 0xC2
-        
-        asic_id = asic_id.to_bytes(1, 'big')
-        reg_addr_bytes = reg_addr.to_bytes(2, 'big')
-        reg_bit_length = reg_bit_length.to_bytes(2, 'big')
+        data_length = 6 + reg_length
 
-        data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
-        print(data_packet)
+        packet_header = self.getPacketHeader(packet_type, data_length)
+        
+        reg_addr_bytes = reg_addr.to_bytes(2, 'big')
+        asic_bit_length_bytes = asic_bit_length.to_bytes(2, 'big')
+        data_bytes = write_data.to_bytes(1, 'big')            # TODO: Not constant
+        data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
+
+        write_packet = packet_header + data_packet
+        print(f'Packet header + packet data : {write_packet}')
+        self.tcp_s.sendall(write_packet)
+
+        self.packet_count_increment()
         
     
-    def readAsicSpiExRegister(self, reg_addr: int, reg_bit_length: int, asic_id: int=0, spi_format: int=0):
+    def readAsicSpiExRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
         """
         Read an ASIC SPI Register.
         
         Args:
             reg_addr: ...
             reg_bit_length: ...
-            asic_id: ...
-            spi_format: ...
         """
         packet_type = 0xC3
+        DATA_LENGTH = 6
+        packet_header = self.getPacketHeader(packet_type, DATA_LENGTH)
 
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         reg_bit_length = reg_bit_length.to_bytes(2, 'big')
 
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
-        print(data_packet)
+        
+        write_packet = packet_header + data_packet
+        print(f'READ: Packet header + packet data : {write_packet}')
+        self.tcp_s.sendall(write_packet)
+
+        self.packet_count_increment()
 
     
-    def setAsicConfigBitFieldByAddr(self, reg_addr):
-        """
-        Set ASIC config local bit field.
-        """
+    #def getAsicReadBack(self, reg_addr, reg_length, write_data):
+    #    """
+    #    Receive readback from SPI register.
+    #    """
+    #    ...
+    #    packet_type = 0xC4
+    #    data_length = 6 + reg_length
+    #    packet_header = self.getPacketHeader(packet_type, data_length)
+    #
+    #    reg_addr_bytes = reg_addr.to_bytes(2, 'big')
+    #    reg_length_bytes = reg_length.to_bytes(2, 'big')
+    #    write_data_bytes = write_data.to_bytes(1, 'big')        # TODO: Not constant
+    #
+    #    data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_length_bytes + write_data_bytes
+    #    
+    #    write_packet = packet_header + data_packet
+    #    print(f'Packet header + packet data : {write_packet}')
+    #    self.tcp_s.sendall(write_packet)
+    #
+    #    self.packet_count_increment()
+
+
         
 
 
