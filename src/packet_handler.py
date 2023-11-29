@@ -152,34 +152,6 @@ class TCPhandler():
 
         self.packet_count_increment()
 
-    
-    #def getAsicReadBack(self, reg_addr, reg_length, write_data):
-    #    """
-    #    Receive readback from SPI register.
-    #    """
-    #    ...
-    #    packet_type = 0xC4
-    #    data_length = 6 + reg_length
-    #    packet_header = self.getPacketHeader(packet_type, data_length)
-    #
-    #    reg_addr_bytes = reg_addr.to_bytes(2, 'big')
-    #    reg_length_bytes = reg_length.to_bytes(2, 'big')
-    #    write_data_bytes = write_data.to_bytes(1, 'big')        # TODO: Not constant
-    #
-    #    data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_length_bytes + write_data_bytes
-    #    
-    #    write_packet = packet_header + data_packet
-    #    print(f'Packet header + packet data : {write_packet}')
-    #    self.tcp_s.sendall(write_packet)
-    #
-    #    self.packet_count_increment()
-
-
-        
-
-
-
-
 
 if __name__ == "__main__":    
     # Set up tcp instance
