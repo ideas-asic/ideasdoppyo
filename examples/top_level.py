@@ -31,10 +31,6 @@ tcp.writeAsicSpiRegister(SPI_REG0, 1, 5, 5)
 data = tcp.getSystemReadBack(200)
 print(f'SPI Reg 0: {data}')
 
-tcp.readAsicSpiExRegister(SPI_REG0, 5)
-data = tcp.getSystemReadBack(200)
-print(f'SPI Reg 0: {data}')
-
 SPI_REG1_CLK_DIV_MODE	=	2
 SPI_REG1_SYSCLK_DLY		=	2
 SPI_REG1_PLL_ENABLE		=	1
@@ -44,6 +40,28 @@ tcp.writeAsicSpiRegister(SPI_REG1, 1, 7, 26)
 data = tcp.getSystemReadBack(200)
 print(f'SPI Reg 1: {data}')
 
-tcp.readAsicSpiExRegister(SPI_REG1, 7)
+# Program NM2 ODACs high...
+
+tcp.writeAsicSpiRegister(0x00CD, 1, 8, 3)
 data = tcp.getSystemReadBack(200)
-print(f'SPI Reg 1: {data}')
+
+tcp.writeAsicSpiRegister(0x00CE, 1, 8, 255)
+data = tcp.getSystemReadBack(200)
+
+tcp.writeAsicSpiRegister(0x00CF, 1, 8, 3)
+data = tcp.getSystemReadBack(200)
+
+tcp.writeAsicSpiRegister(0x00D0, 1, 8, 255)
+data = tcp.getSystemReadBack(200)
+
+tcp.writeAsicSpiRegister(0x00CB, 1, 8, 0)
+data = tcp.getSystemReadBack(200)
+
+tcp.writeAsicSpiRegister(0x00CC, 1, 8, 0)
+data = tcp.getSystemReadBack(200)
+
+
+
+
+
+
