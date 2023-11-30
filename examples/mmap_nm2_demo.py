@@ -1,6 +1,8 @@
 import sys
 sys.path.insert(0, './../src/')
 import time
+import os
+
 from memmap_nm2 import MMRST
 from packet_handler import TCPhandler
 
@@ -17,7 +19,6 @@ print(f'Data: {data}')
 
 # SYS CLOCK ENABLE
 tcp.writeSysReg(0x0C01, 4, 1)
-
 
 # ------------------- Changes to SPI_REG0/1 from default (see tb_product.init_asic) -------------------     
 MM_CONF.fields['seq_halt'].set_value(1)              # Halt sequencr    
@@ -226,3 +227,42 @@ for regaddr, reg in MMRST.copy().registers.items():
 
 #for regardd, reg in MMRST.copy().registers.items():
 #        print(help(MM_CONF.registers[regaddr])) #.fieldpos_list, MM_CONF.registers[regaddr].fieldval_list)
+
+sequencer_program = './ram_scrubbing_routine.nasm'
+
+def program_sequencer( nasm_file ):
+    '''
+    Programs the sequencer with chosen nasm file
+    '''    
+    
+
+    inf = open(nasm_file,'r')
+    outf = open(os.path.splitext(nasm_file)[0]+'.v','w')
+    
+    from NIRCAmkII_parser import nirca_parser
+    nparser = nirca_parser(inf)
+    nparser.parse()					# Parse, Syntax-check, etc
+    nparser.link()					# Address alignment
+    prog_list_int = nparser.write_mco_8b_testbench(outf)
+
+    COMPILED_SCRIPT = prog_list_int
+
+    # Write the compiled program to the instruction memory
+    prog_addr = 0x2000
+    prog_copy_addr = 0x0400        
+    
+    asic_id = 0
+        
+    for data_pos in range(0, len(COMPILED_SCRIPT)):
+        data = COMPILED_SCRIPT[data_pos]
+        print(data)
+#        tcp.writeAsicSpiRegister(prog_addr, 1, 8, data)
+#        data = tcp.getSystemReadBack(200)	
+#        #writeAsicSpiExRegister_fast(prog_addr, asic_id)
+#
+#        prog_addr = prog_addr + 1    
+#
+#    inf.close()
+#    outf.close()
+#
+program_sequencer(sequencer_program)
