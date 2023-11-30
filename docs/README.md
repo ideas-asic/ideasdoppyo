@@ -1,2 +1,2 @@
-# ideaspy
-Ethernet handling via python (tcp and udp)
+# ideasdoppyo
+Ethernet handling via python (tcp and udp). Communication towards IDEAS Doppio via python.
