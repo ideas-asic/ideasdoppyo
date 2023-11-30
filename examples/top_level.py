@@ -27,7 +27,7 @@ SPI_REG0_SEQ_RESET		=	0
 SPI_REG0_SEQ_HALT		=	1
 SPI_REG0_RESERVED		=	0
 
-tcp.writeAsicSpiRegister(SPI_REG0, 1, 5, 5)
+tcp.writeAsicSpiRegister(SPI_REG0, 1, 8, 5)
 data = tcp.getSystemReadBack(200)
 print(f'SPI Reg 0: {data}')
 
@@ -36,7 +36,7 @@ SPI_REG1_SYSCLK_DLY		=	2
 SPI_REG1_PLL_ENABLE		=	1
 SPI_REG1_RESERVED		=	0
 
-tcp.writeAsicSpiRegister(SPI_REG1, 1, 7, 26)
+tcp.writeAsicSpiRegister(SPI_REG1, 1, 8, 26)
 data = tcp.getSystemReadBack(200)
 print(f'SPI Reg 1: {data}')
 
@@ -54,10 +54,10 @@ data = tcp.getSystemReadBack(200)
 tcp.writeAsicSpiRegister(0x00D0, 1, 8, 255)
 data = tcp.getSystemReadBack(200)
 
-tcp.writeAsicSpiRegister(0x00CB, 1, 8, 0)
+tcp.writeAsicSpiRegister(0x00CB, 1, 8, 255)
 data = tcp.getSystemReadBack(200)
 
-tcp.writeAsicSpiRegister(0x00CC, 1, 8, 0)
+tcp.writeAsicSpiRegister(0x00CC, 1, 8, 255)
 data = tcp.getSystemReadBack(200)
 
 
