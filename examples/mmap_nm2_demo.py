@@ -3,7 +3,7 @@ sys.path.insert(0, './../src/')
 import time
 import os
 
-from memmap_nm2 import MMRST
+from memmap_nm2 import MMRST, ADC
 from packet_handler import TCPhandler
 
 tcp = TCPhandler()
@@ -228,14 +228,22 @@ for regaddr, reg in MMRST.copy().registers.items():
 #for regardd, reg in MMRST.copy().registers.items():
 #        print(help(MM_CONF.registers[regaddr])) #.fieldpos_list, MM_CONF.registers[regaddr].fieldval_list)
 
-sequencer_program = './ram_scrubbing_routine.nasm'
+
+#for i in range(10):
+#    adc=[]
+#    for i in range(17):
+#        adc.append( ADC(i,map = MM_CONF) )
+#    coeff_scale_choice = adc[vadc_select].rescale_coefficients(coeff_scale=1.0, scale_to_max=True, decode=True, encode=True, write=True, hook_read = tb_product.read_reg, hook_write = tb_product.write_reg)
+
+
+sequencer_program = 'ram_scrubbing_routine.nasm'
 
 def program_sequencer( nasm_file ):
     '''
     Programs the sequencer with chosen nasm file
     '''    
     
-
+    print(nasm_file)
     inf = open(nasm_file,'r')
     outf = open(os.path.splitext(nasm_file)[0]+'.v','w')
     
