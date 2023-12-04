@@ -88,8 +88,10 @@ class TCPhandler():
         
         write_packet = packet_header_array + data_field
         self.tcp_s.sendall(write_packet)
+        
         if self.doPrint:
-            print(f'Write packet: {write_packet}]')
+            write_packet_bin8 = np.frombuffer(write_packet, np.uint8)
+            print(f'Sent: {write_packet_bin8}')
         self.packet_count_increment()
 
 
@@ -119,6 +121,8 @@ class TCPhandler():
         """
         data = self.tcp_s.recv(reg_length)
         data = np.frombuffer(data, dtype=np.uint8)
+        if self.doPrint:
+            print(f'Recv: {data}')
         return data
 
 
@@ -137,8 +141,9 @@ class TCPhandler():
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
 
         write_packet = packet_header + data_packet
+        write_packet_uint8 = np.frombuffer(write_packet, dtype=np.uint8)
         if self.doPrint:
-            print(f'Packet header + packet data : {write_packet}')
+            print(f'Sent: {write_packet_uint8}')
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
