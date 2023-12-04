@@ -5,8 +5,15 @@ import socket
 
 class TCPhandler():
     def __init__(self, server_ip: str="10.10.0.50", port: int=50010):
+        
+        # Setup of socket
         self.server_ip = server_ip
         self.port = port
+        tcp_s = socket.socket()
+        tcp_s.connect((self.server_ip, self.port))
+        self.tcp_s = tcp_s
+
+        # For SPI commands        
         self.version = '{0:03b}'.format(0)
         self.system_number = '{0:05b}'.format(0)
         self.sequencer_flag = '{0:02b}'.format(0)
@@ -19,11 +26,6 @@ class TCPhandler():
         # print strings in functions
         self.doPrint = False
         
-        # Setup of socket
-        tcp_s = socket.socket()
-        tcp_s.connect((self.server_ip, self.port))
-        self.tcp_s = tcp_s
-
 
     def doPrintEnable(self, enable: bool) -> None:
         """Print strings in functions."""
@@ -34,7 +36,14 @@ class TCPhandler():
 
 
     def setSpiFormat(self, spi_format: int) -> None:
-        """Updates spi format."""
+        """
+        Updates spi format.
+        
+        TODO: Is this for ASIC SPI Format or for Doppio SPI format.
+        
+        Args:
+            spi_format: TODO Is it ASIC or Doppio SPI format?
+        """
         self.spi_format = int(spi_format).to_bytes(1, 'big')
         if self.doPrint:
             print(f'spi_format set to {self.spi_format}')
@@ -76,9 +85,9 @@ class TCPhandler():
             value: Length of the data to write.
             data_length: Variable length of register data to write.
         """
-        packet_type = 0x10
+        PACKET_TYPE = 0x10
         packet_data_length = 3 + data_length
-        packet_header_array = self.getPacketHeader(packet_type=packet_type, data_length=packet_data_length)
+        packet_header_array = self.getPacketHeader(packet_type=PACKET_TYPE, data_length=packet_data_length)
         # print(f'Packet header array: {packet_header_array}')
         
         reg_addr_bytes = address.to_bytes(2, 'big')
@@ -98,10 +107,13 @@ class TCPhandler():
     def readSysReg(self, address: int) -> None:
         """
         Reads system register value.
+        
+        Args:
+            address: System register address.
         """
-        packet_type = 0x11
-        data_length = 0x02
-        packet_header = self.getPacketHeader(packet_type, data_length)
+        PACKET_TYPE = 0x11
+        DATA_LENGTH = 0x02
+        packet_header = self.getPacketHeader(PACKET_TYPE, DATA_LENGTH)
         address_bytes = address.to_bytes(2, 'big')
         write_packet = packet_header + address_bytes
         self.tcp_s.sendall(write_packet)
@@ -128,7 +140,13 @@ class TCPhandler():
 
     def writeAsicSpiRegister(self, reg_addr, reg_length, asic_bit_length, write_data) -> None:
         """
-        Write an ASIC SPI register
+        Write an ASIC SPI register.
+
+        Args:
+            reg_addr: SPI register address.
+            reg_length: Length of SPI register in bytes.
+            asic_bit_length: Number of bit in SPI register.
+            write_data: Data to write.
         """
         packet_type = 0xC2
         data_length = 6 + reg_length
@@ -154,8 +172,8 @@ class TCPhandler():
         Read an ASIC SPI Register.
         
         Args:
-            reg_addr: ...
-            reg_bit_length: ...
+            reg_addr: SPI register address.
+            reg_bit_length: Number of bit in SPI register.
         """
         packet_type = 0xC3
         DATA_LENGTH = 6
