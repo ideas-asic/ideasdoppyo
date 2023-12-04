@@ -16,16 +16,28 @@ class TCPhandler():
         self.asic_id = int(0).to_bytes(1, 'big')
         self.spi_format = int(2).to_bytes(1, 'big')
         
+        # print strings in functions
+        self.doPrint = False
+        
         # Setup of socket
         tcp_s = socket.socket()
         tcp_s.connect((self.server_ip, self.port))
         self.tcp_s = tcp_s
 
 
+    def doPrintEnable(self, enable: bool) -> None:
+        """Print strings in functions."""
+        if enable:
+            self.doPrint = True
+        else:
+            self.doPrint = False
+
+
     def setSpiFormat(self, spi_format: int) -> None:
         """Updates spi format."""
         self.spi_format = int(spi_format).to_bytes(1, 'big')
-        print(f'spi_format set to {self.spi_format}')
+        if self.doPrint:
+            print(f'spi_format set to {self.spi_format}')
 
 
     def packet_count_increment(self) -> None:
@@ -76,7 +88,8 @@ class TCPhandler():
         
         write_packet = packet_header_array + data_field
         self.tcp_s.sendall(write_packet)
-        print(f'Write packet: {write_packet}]')
+        if self.doPrint:
+            print(f'Write packet: {write_packet}]')
         self.packet_count_increment()
 
 
@@ -90,7 +103,8 @@ class TCPhandler():
         address_bytes = address.to_bytes(2, 'big')
         write_packet = packet_header + address_bytes
         self.tcp_s.sendall(write_packet)
-        print(f'Sent: Read System Register, address: {address}')
+        if self.doPrint:
+            print(f'Sent: Read System Register, address: {address}')
         self.packet_count_increment()
 
     
@@ -108,7 +122,7 @@ class TCPhandler():
         return data
 
 
-    def writeAsicSpiRegister(self, reg_addr, reg_length, asic_bit_length, write_data, asic_id: int=0, system_id: int=0) -> None:
+    def writeAsicSpiRegister(self, reg_addr, reg_length, asic_bit_length, write_data) -> None:
         """
         Write an ASIC SPI register
         """
@@ -123,7 +137,8 @@ class TCPhandler():
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
 
         write_packet = packet_header + data_packet
-        print(f'Packet header + packet data : {write_packet}')
+        if self.doPrint:
+            print(f'Packet header + packet data : {write_packet}')
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
@@ -147,7 +162,8 @@ class TCPhandler():
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
         
         write_packet = packet_header + data_packet
-        print(f'READ: Packet header + packet data : {write_packet}')
+        if self.doPrint:
+            print(f'READ: Packet header + packet data : {write_packet}')
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
