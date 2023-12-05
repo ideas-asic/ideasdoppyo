@@ -1,4 +1,10 @@
 
+"""
+Sends and receives TCP packets to IDEAS Doppio.
+For TCP, the readout PC is configured as client with the hardware as the network server.
+For UDP, the hardware is configured as network server with the hardware as client.
+"""
+
 import numpy as np
 import socket
 
@@ -13,22 +19,28 @@ class TCPhandler():
         tcp_s.connect((self.server_ip, self.port))
         self.tcp_s = tcp_s
 
-        # For SPI commands        
+        # General variables for all ASICs and systems
+        self.asic_id = int(0).to_bytes(1, 'big')
+        
+        # For SPI transactions      
         self.version = '{0:03b}'.format(0)
         self.system_number = '{0:05b}'.format(0)
         self.sequencer_flag = '{0:02b}'.format(0)
         self.packet_count = '{0:014b}'.format(0)
         self.reserved = '{0:032b}'.format(0)
-
-        self.asic_id = int(0).to_bytes(1, 'big')
         self.spi_format = int(2).to_bytes(1, 'big')
         
         # print strings in functions
-        self.doPrint = False
+        self.doPrint = True
         
 
     def doPrintEnable(self, enable: bool) -> None:
-        """Print strings in functions."""
+        """
+        Print strings in functions.
+        
+        Args:
+            enable: Prints if True.
+        """
         if enable:
             self.doPrint = True
         else:
@@ -54,13 +66,13 @@ class TCPhandler():
         self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
 
 
-    def getPacketHeader(self, packet_type: hex, data_length: hex) -> np.ndarray:
+    def getPacketHeader(self, packet_type: hex, data_length: hex) -> bytes:
         """
         Constructs packet header based on function.
 
         Args:
-            version: Version of packet protocol. Fixed 0b000.
-            system_number: 
+            packet_type: Defines how the packet data field should be decoded.
+            data_length: Number of bytes proceeding header.
         """
         packet_type_bin = '{0:08b}'.format(packet_type)
         data_length_bin = '{0:016b}'.format(data_length)
@@ -88,7 +100,6 @@ class TCPhandler():
         PACKET_TYPE = 0x10
         packet_data_length = 3 + data_length
         packet_header_array = self.getPacketHeader(packet_type=PACKET_TYPE, data_length=packet_data_length)
-        # print(f'Packet header array: {packet_header_array}')
         
         reg_addr_bytes = address.to_bytes(2, 'big')
         reg_length_bytes = data_length.to_bytes(1, 'big')
@@ -104,7 +115,7 @@ class TCPhandler():
         self.packet_count_increment()
 
 
-    def readSysReg(self, address: int) -> None:
+    def readSysReg(self, address: hex) -> None:
         """
         Reads system register value.
         
@@ -148,10 +159,10 @@ class TCPhandler():
             asic_bit_length: Number of bit in SPI register.
             write_data: Data to write.
         """
-        packet_type = 0xC2
+        PACKET_TYPE = 0xC2
         data_length = 6 + reg_length
 
-        packet_header = self.getPacketHeader(packet_type, data_length)
+        packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
         
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         asic_bit_length_bytes = asic_bit_length.to_bytes(2, 'big')
@@ -175,9 +186,9 @@ class TCPhandler():
             reg_addr: SPI register address.
             reg_bit_length: Number of bit in SPI register.
         """
-        packet_type = 0xC3
+        PACKET_TYPE = 0xC3
         DATA_LENGTH = 6
-        packet_header = self.getPacketHeader(packet_type, DATA_LENGTH)
+        packet_header = self.getPacketHeader(PACKET_TYPE, DATA_LENGTH)
 
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         reg_bit_length = reg_bit_length.to_bytes(2, 'big')
@@ -191,8 +202,49 @@ class TCPhandler():
 
         self.packet_count_increment()
 
+    
+    def writeReadShiftRegister(self, configuration_data: bytes) -> None:
+        """
+        Write/read ASICs with shift registers.
+        
+        Args:
+            configuration_data: Shift-in data.
+        """
+        PACKET_TYPE = 0xC0
+        data_length = 3 + len(configuration_data)
+        packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
+        
+        data_packet = self.asic_id + len(configuration_data).to_bytes(2, 'big') + configuration_data
+
+        write_packet = packet_header + data_packet
+        if self.doPrint:
+            write_packet_array = np.frombuffer(write_packet, dtype=np.uint8)
+            print(f'Write/Read Shift register: {write_packet_array}')
+        
+        self.packet_count_increment()
+
+
+    def shiftRegisterReadback(self) -> None:
+        """
+        Decode read-back packet sent after writeReadShiftRegister telecommand.
+        """
+        PACKET_TYPE = 0xC1
+
+
+
+
+def UDPhandler(server_ip="10.10.0.100", port=50011):
+    def __init__(self):
+        self.server_ip = server_ip
+        self.port = port
+
+        self.doPrint = False
+        
+
 
 if __name__ == "__main__":    
     # Set up tcp instance
     tcp = TCPhandler("10.10.0.50", 50010)
     print(tcp)
+    udp = UDPhandler("10.10.0.100", port=50011)
+    print(udp)
