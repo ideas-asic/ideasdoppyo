@@ -221,6 +221,7 @@ class TCPhandler():
             write_packet_array = np.frombuffer(write_packet, dtype=np.uint8)
             print(f'Write/Read Shift register: {write_packet_array}')
         
+        self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
 
 
