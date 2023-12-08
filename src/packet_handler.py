@@ -17,6 +17,7 @@ class TCPhandler():
         self.port = port
         tcp_s = socket.socket()
         tcp_s.connect((self.server_ip, self.port))
+        #tcp_s.settimeout(1.0)
         self.tcp_s = tcp_s
 
         # General variables for all ASICs and systems
