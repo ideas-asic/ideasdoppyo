@@ -7,6 +7,7 @@ For UDP, the hardware is configured as network server with the hardware as clien
 
 import numpy as np
 import socket
+import binascii
 
 
 class TCPhandler:
@@ -242,12 +243,12 @@ class doPrinter(TCPhandler):
         self.doPrintFormat = doPrintFormat
 
         self.printString_packet_type = {
-            0x10: "Sent: Write System Register",
-            0x11: "Sent: Read System Register",
-            0x12: "Recv: System Register Read-Back",
-            0xC2: "Sent: ASIC SPI Register Write",
-            0xC3: "Sent: ASIC SPI Register Read",
-            0xC4: "Recv: ASIC SPI Register Read-Back"     
+            0x10: "Sent: Write System Register,      ",
+            0x11: "Sent: Read System Register,       ",
+            0x12: "Recv: System Register Read-Back,  ",
+            0xC2: "Sent: ASIC SPI Register Write,    ",
+            0xC3: "Sent: ASIC SPI Register Read,     ",
+            0xC4: "Recv: ASIC SPI Register Read-Back,"     
         }
 
     def commonFunction(self, data_bytes: bytes):
@@ -270,14 +271,14 @@ class doPrinter(TCPhandler):
         packet_type = self.data_bytes[1]
         string_packet_type = self.printString_packet_type[packet_type]
         if packet_type in [0x10, 0x12]:
-            address = (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
+            address = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]) 
         elif packet_type in [0xC2, 0xC4]:
-            address = (hex(self.data_bytes[12])[2:] + hex(self.data_bytes[13])[2:]).upper()
+            address = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]) 
         else:
             address = value = ...
-        printString = f'{string_packet_type}, Addr: {address} - Val: {value}' 
+        printString = f'{string_packet_type} Addr: {address} - Val: {value}' 
         return printString
     
     def uint8_doPrintFormat(self):
