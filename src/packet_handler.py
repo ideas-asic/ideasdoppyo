@@ -9,7 +9,7 @@ import numpy as np
 import socket
 
 
-class TCPhandler():
+class TCPhandler:
     def __init__(self, server_ip: str="10.10.0.50", port: int=50010):
         
         # Setup of socket
@@ -30,15 +30,9 @@ class TCPhandler():
         self.packet_count = '{0:014b}'.format(0)
         self.reserved = '{0:032b}'.format(0)
         self.spi_format = int(2).to_bytes(1, 'big')
-        
-        # print strings in functions
-        self.doPrint = True
-        self.doPrintFormats = {
-            1: ...,
-            2: ...,
-            3: ...
-        }
-        self.doPrintFormat = self.doPrintFormats[1]
+
+        # printer instance
+        self.doPrinter = PrintFormatter(doPrintFormat = 1)
 
     def doPrintEnable(self, enable: bool) -> None:
         """
@@ -89,8 +83,7 @@ class TCPhandler():
         expected_packet_length = 3+5+8+2+14+32+16
         if len(packet_header) != expected_packet_length:
             # Raise error
-            print(f"Packet header size isn't of correct size... Now length was {len(packet_header)}, but it should be {expected_packet_length}.")
-        
+            print(f"Packet header size isn't of correct size... Now length was {len(packet_header)}, but it should be {expected_packet_length}.")       
         return packet_header_10
 
 
@@ -238,10 +231,8 @@ class TCPhandler():
         PACKET_TYPE = 0xC1
 
 
-
-
-def UDPhandler(server_ip="10.10.0.100", port=50011):
-    def __init__(self):
+class UDPhandler:
+    def __init__(self, server_ip="10.10.0.100", port=50011):
         self.server_ip = server_ip
         self.port = port
 
@@ -253,9 +244,32 @@ def UDPhandler(server_ip="10.10.0.100", port=50011):
         self.udp_s = udp_s
 
 
+class PrintFormatter(TCPhandler):
+    def __init__(self, doPrintFormat: int):
+        self.doPrint = True
+        self.doPrintFormats = {
+            1: self.default_doPrintFormat(),
+            2: ...,
+            3: ...
+        }
+        self.doPrintFormat = self.doPrintFormats[doPrintFormat]
+
+    def default_doPrintFormat(self, data_bytes):
+        """
+        Examples:
+            Send: Write system register,  Reg: 0xFFA0 - Val: 1
+            Recv: Read system register, Reg: 0xFA01 - Val: 1A  
+        """
+
+        header_decode = ...
+
+
+
+
 if __name__ == "__main__":    
     # Set up tcp instance
     tcp = TCPhandler("10.10.0.50", 50010)
     print(tcp)
     #udp = UDPhandler("10.10.0.100", port=50011)
     # print(udp)
+
