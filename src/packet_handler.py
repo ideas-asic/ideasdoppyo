@@ -32,7 +32,9 @@ class TCPhandler:
         self.spi_format = int(2).to_bytes(1, 'big')
 
         # printer instance
-        self.doPrinter = PrintFormatter(doPrintFormat = 1)
+        self.doPrint = True
+        self.doPrinter = doPrinter(doPrintFormat = 1)
+
 
     def doPrintEnable(self, enable: bool) -> None:
         """
@@ -109,8 +111,9 @@ class TCPhandler:
         self.tcp_s.sendall(write_packet)
         
         if self.doPrint:
-            write_packet_bin8 = np.frombuffer(write_packet, np.uint8)
-            print(f'Sent: {write_packet_bin8}')
+            # write_packet_bin8 = np.frombuffer(write_packet, np.uint8)
+            print_packet = self.doPrinter.commonFunction(write_packet)
+            print(print_packet)
         self.packet_count_increment()
 
 
@@ -244,24 +247,55 @@ class UDPhandler:
         self.udp_s = udp_s
 
 
-class PrintFormatter(TCPhandler):
-    def __init__(self, doPrintFormat: int):
+class doPrinter(TCPhandler):
+    def __init__(self, doPrintFormat: int=1):
+        self.data_bytes = None
+
         self.doPrint = True
-        self.doPrintFormats = {
+        self.doPrintFormat = doPrintFormat
+        
+        self.printString_packet_type = {
+            0x10: "Sent: Write System Register",
+            0x11: "Sent: Read System Register",
+            0x12: "Recv: System Register Read-Back",
+            0xC2: "Sent: ASIC SPI Register Write",
+            0xC3: "Sent: ASIC SPI Register Read",
+            0xC4: "Recv: ASIC SPI Register Read-Back"     
+        }
+
+    def commonFunction(self, data_bytes: bytes):
+        self.data_bytes = data_bytes
+        doPrintFunctions = {
+            # Key: doPrintFormat
             1: self.default_doPrintFormat(),
-            2: ...,
+            2: self.uint8_doPrintFormat(),
             3: ...
         }
-        self.doPrintFormat = self.doPrintFormats[doPrintFormat]
-
-    def default_doPrintFormat(self, data_bytes):
+        print(self.data_bytes)
+        printString = doPrintFunctions[self.doPrintFormat]
+        return printString
+    
+    def default_doPrintFormat(self):
         """
+        Default print format for ...
+
         Examples:
             Send: Write system register,  Reg: 0xFFA0 - Val: 1
             Recv: Read system register, Reg: 0xFA01 - Val: 1A  
         """
-
-        header_decode = ...
+        packet_type = self.printString_packet_type[self.data_bytes[1]]
+        address = (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
+        value = ... # (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
+        printString = f'{packet_type}, Addr: {address} - Val: {value}' 
+        return printString
+    
+    def uint8_doPrintFormat(self):
+        """
+        Examples:
+            [0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # FIXME
+        """
+        printString = np.frombuffer(self.data_bytes, np.uint8)
+        return printString
 
 
 
