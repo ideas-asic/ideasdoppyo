@@ -247,11 +247,10 @@ class UDPhandler:
         self.udp_s = udp_s
 
 
-class doPrinter(TCPhandler):
+class doPrinter:
     def __init__(self, doPrintFormat: int=1):
         self.data_bytes = None
 
-        self.doPrint = True
         self.doPrintFormat = doPrintFormat
         
         self.printString_packet_type = {
@@ -277,15 +276,13 @@ class doPrinter(TCPhandler):
     
     def default_doPrintFormat(self):
         """
-        Default print format for ...
-
         Examples:
             Send: Write system register,  Reg: 0xFFA0 - Val: 1
             Recv: Read system register, Reg: 0xFA01 - Val: 1A  
         """
         packet_type = self.printString_packet_type[self.data_bytes[1]]
         address = (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
-        value = ... # (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
+        value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]])
         printString = f'{packet_type}, Addr: {address} - Val: {value}' 
         return printString
     
