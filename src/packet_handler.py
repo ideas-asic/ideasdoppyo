@@ -17,7 +17,7 @@ class TCPhandler():
         self.port = port
         tcp_s = socket.socket()
         tcp_s.connect((self.server_ip, self.port))
-        #tcp_s.settimeout(1.0)
+        tcp_s.settimeout(1.0)
         self.tcp_s = tcp_s
 
         # General variables for all ASICs and systems
@@ -33,7 +33,12 @@ class TCPhandler():
         
         # print strings in functions
         self.doPrint = True
-        
+        self.doPrintFormats = {
+            1: ...,
+            2: ...,
+            3: ...
+        }
+        self.doPrintFormat = self.doPrintFormats[1]
 
     def doPrintEnable(self, enable: bool) -> None:
         """
@@ -141,7 +146,7 @@ class TCPhandler():
         Received packet with format 0x12.
 
         Args:
-            reg_length: Length of system register. 
+            reg_length: Length of system register in bytes. 
         """
         data = self.tcp_s.recv(reg_length)
         data = np.frombuffer(data, dtype=np.uint8)
@@ -241,12 +246,16 @@ def UDPhandler(server_ip="10.10.0.100", port=50011):
         self.port = port
 
         self.doPrint = False
-        
+
+        udp_s = socket.socket(type=2)
+        udp_s.connect((self.server_ip, self.port))
+        udp_s.settimeout(1.0)
+        self.udp_s = udp_s
 
 
 if __name__ == "__main__":    
     # Set up tcp instance
     tcp = TCPhandler("10.10.0.50", 50010)
     print(tcp)
-    udp = UDPhandler("10.10.0.100", port=50011)
-    print(udp)
+    #udp = UDPhandler("10.10.0.100", port=50011)
+    # print(udp)
