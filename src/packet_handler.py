@@ -33,20 +33,8 @@ class TCPhandler:
 
         # printer instance
         self.doPrint = True
-        self.doPrinter = doPrinter(doPrintFormat = 1)
-
-
-    def doPrintEnable(self, enable: bool) -> None:
-        """
-        Print strings in functions.
-        
-        Args:
-            enable: Prints if True.
-        """
-        if enable:
-            self.doPrint = True
-        else:
-            self.doPrint = False
+        self.doPrintFormat = 1
+        self.doPrinter = doPrinter(self.doPrintFormat)
 
 
     def setSpiFormat(self, spi_format: int) -> None:
@@ -111,9 +99,7 @@ class TCPhandler:
         self.tcp_s.sendall(write_packet)
         
         if self.doPrint:
-            # write_packet_bin8 = np.frombuffer(write_packet, np.uint8)
-            print_packet = self.doPrinter.commonFunction(write_packet)
-            print(print_packet)
+            print(self.doPrinter.commonFunction(write_packet))
         self.packet_count_increment()
 
 
@@ -145,9 +131,9 @@ class TCPhandler:
             reg_length: Length of system register in bytes. 
         """
         data = self.tcp_s.recv(reg_length)
-        data = np.frombuffer(data, dtype=np.uint8)
         if self.doPrint:
-            print(f'Recv: {data}')
+            print(self.doPrinter.commonFunction(data))
+        data = np.frombuffer(data, dtype=np.uint8)
         return data
 
 
@@ -172,9 +158,10 @@ class TCPhandler:
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
 
         write_packet = packet_header + data_packet
-        write_packet_uint8 = np.frombuffer(write_packet, dtype=np.uint8)
+        # write_packet_uint8 = np.frombuffer(write_packet, dtype=np.uint8)
         if self.doPrint:
-            print(f'Sent: {write_packet_uint8}')
+            # print(f'Sent: {write_packet_uint8}')
+            print(self.doPrinter.commonFunction(write_packet))
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
@@ -247,12 +234,13 @@ class UDPhandler:
         self.udp_s = udp_s
 
 
-class doPrinter:
-    def __init__(self, doPrintFormat: int=1):
+class doPrinter(TCPhandler):
+    def __init__(self, doPrintFormat):
         self.data_bytes = None
 
+        # super().__init__(doPrintFormat)
         self.doPrintFormat = doPrintFormat
-        
+
         self.printString_packet_type = {
             0x10: "Sent: Write System Register",
             0x11: "Sent: Read System Register",
@@ -270,7 +258,6 @@ class doPrinter:
             2: self.uint8_doPrintFormat(),
             3: ...
         }
-        print(self.data_bytes)
         printString = doPrintFunctions[self.doPrintFormat]
         return printString
     
@@ -280,10 +267,17 @@ class doPrinter:
             Send: Write system register,  Reg: 0xFFA0 - Val: 1
             Recv: Read system register, Reg: 0xFA01 - Val: 1A  
         """
-        packet_type = self.printString_packet_type[self.data_bytes[1]]
-        address = (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
-        value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]])
-        printString = f'{packet_type}, Addr: {address} - Val: {value}' 
+        packet_type = self.data_bytes[1]
+        string_packet_type = self.printString_packet_type[packet_type]
+        if packet_type in [0x10, 0x12]:
+            address = (hex(self.data_bytes[10])[2:] + hex(self.data_bytes[11])[2:]).upper()
+            value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]) 
+        elif packet_type in [0xC2, 0xC4]:
+            address = (hex(self.data_bytes[12])[2:] + hex(self.data_bytes[13])[2:]).upper()
+            value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]) 
+        else:
+            address = value = ...
+        printString = f'{string_packet_type}, Addr: {address} - Val: {value}' 
         return printString
     
     def uint8_doPrintFormat(self):
