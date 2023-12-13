@@ -272,10 +272,10 @@ class doPrinter(TCPhandler):
         string_packet_type = self.printString_packet_type[packet_type]
         if packet_type in [0x10, 0x12]:
             address = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
-            value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]) 
+            value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]).upper()
         elif packet_type in [0xC2, 0xC4]:
             address = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
-            value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]) 
+            value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]).upper() 
         else:
             address = value = ...
         printString = f'{string_packet_type} Addr: {address} - Val: {value}' 
@@ -296,6 +296,6 @@ if __name__ == "__main__":
     # Set up tcp instance
     tcp = TCPhandler("10.10.0.50", 50010)
     print(tcp)
-    #udp = UDPhandler("10.10.0.100", port=50011)
-    # print(udp)
+    udp = UDPhandler("10.10.0.100", port=50011)
+    print(udp)
 
