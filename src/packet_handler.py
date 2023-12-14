@@ -138,7 +138,7 @@ class TCPhandler:
         return data
 
 
-    def writeAsicSpiRegister(self, reg_addr, reg_length, asic_bit_length, write_data) -> None:
+    def writeAsicSpiRegister(self, reg_addr: hex, reg_length: int, asic_bit_length: int, write_data: hex) -> None:
         """
         Write an ASIC SPI register.
 
@@ -187,7 +187,9 @@ class TCPhandler:
         
         write_packet = packet_header + data_packet
         if self.doPrint:
-            print(f'READ: Packet header + packet data : {write_packet}')
+            ...
+            #FIXME
+            # print(f'READ: Packet header + packet data : {write_packet}')
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
@@ -208,18 +210,9 @@ class TCPhandler:
 
         write_packet = packet_header + data_packet
         if self.doPrint:
-            write_packet_array = np.frombuffer(write_packet, dtype=np.uint8)
-            print(f'Write/Read Shift register: {write_packet_array}')
-        
+            print(self.doPrinter.commonFunction(write_packet))         
         self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
-
-
-    def shiftRegisterReadback(self) -> None:
-        """
-        Decode read-back packet sent after writeReadShiftRegister telecommand.
-        """
-        PACKET_TYPE = 0xC1
 
 
 class UDPhandler:
@@ -239,7 +232,6 @@ class doPrinter(TCPhandler):
     def __init__(self, doPrintFormat):
         self.data_bytes = None
 
-        # super().__init__(doPrintFormat)
         self.doPrintFormat = doPrintFormat
 
         self.printString_packet_type = {
