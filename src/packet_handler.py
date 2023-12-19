@@ -159,9 +159,7 @@ class TCPhandler:
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
 
         write_packet = packet_header + data_packet
-        # write_packet_uint8 = np.frombuffer(write_packet, dtype=np.uint8)
         if self.doPrint:
-            # print(f'Sent: {write_packet_uint8}')
             print(self.doPrinter.commonFunction(write_packet))
         self.tcp_s.sendall(write_packet)
 
@@ -214,21 +212,43 @@ class TCPhandler:
         self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
 
+    def socketClose(self):
+        self.tcp_s.close()
+
 
 class UDPhandler:
-    def __init__(self, server_ip="10.10.0.100", port=50011):
+    def __init__(self, data_format, server_ip="10.10.0.100", port=50011):
+        """
+        Args:
+            data_format: {0: Image data packet, 1: Multi-event pulse height data packet, 2: Single-event pulse height data packet, 3: Trigger Time Data P}
+        """
         self.server_ip = server_ip
         self.port = port
 
         self.doPrint = False
 
+        self.data_format = data_format
+
         udp_s = socket.socket(type=2)
-        udp_s.connect((self.server_ip, self.port))
-        udp_s.settimeout(1.0)
+        udp_s.bind((self.server_ip, self.port))
+        udp_s.settimeout(10.)
         self.udp_s = udp_s
 
+    def receiveData(self) -> bytes:
+        """
+        Receives UDP packets.
 
-class doPrinter(TCPhandler):
+        NOTE Only max 1024 bytes that is received.
+        """
+        ...
+        data, _ = self.udp_s.recvfrom(1024)
+        return data
+
+
+
+
+
+class doPrinter:
     def __init__(self, doPrintFormat):
         self.data_bytes = None
 
