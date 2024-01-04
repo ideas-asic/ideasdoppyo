@@ -248,6 +248,7 @@ class UDPhandler:
         this_index = 0
         while this_index <= N:
             data = self.receiveData()
+            data = np.frombuffer(data, '>H')[20:]                # FIXME: Specific data format!
             data_array = np.concatenate((data_array, data))
             this_index += len(data)
         return data_array
