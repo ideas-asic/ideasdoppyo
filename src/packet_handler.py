@@ -240,11 +240,17 @@ class UDPhandler:
 
         NOTE Only max 1024 bytes that is received.
         """
-        ...
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-
+    def collectNsamples(self, N) -> np.ndarray:
+        data_array = np.array([])
+        this_index = 0
+        while this_index <= N:
+            data = self.receiveData()
+            data_array = np.concatenate((data_array, data))
+            this_index += len(data)
+        return data_array
 
 
 
