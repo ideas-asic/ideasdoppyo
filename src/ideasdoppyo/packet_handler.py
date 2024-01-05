@@ -231,7 +231,7 @@ class UDPhandler:
 
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
-        udp_s.settimeout(10.)
+        # udp_s.settimeout(10.)
         self.udp_s = udp_s
 
     def receiveData(self) -> bytes:
