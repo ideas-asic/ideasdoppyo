@@ -253,6 +253,8 @@ class UDPhandler:
             this_index += len(data)
         return data_array
 
+    def socketClose(self):
+        self.udp_s.close()
 
 
 class doPrinter:
