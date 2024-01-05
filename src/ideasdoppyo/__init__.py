@@ -1,2 +1,1 @@
-import importlib.metadata
-__version__ = importlib.metadata.version('ideasdoppyo')
+__version__ = '0.1.1'
