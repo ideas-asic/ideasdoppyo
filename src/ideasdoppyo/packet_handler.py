@@ -254,6 +254,7 @@ class UDPhandler:
         return data_array
 
     def socketClose(self):
+        self.udp_s.shutdown(socket.SHUT_RDWR)
         self.udp_s.close()
 
 
