@@ -33,9 +33,13 @@ class TCPhandler:
         self.spi_format = int(2).to_bytes(1, 'big')
 
         # printer instance
-        self.doPrint = True
+        self._doPrint = True
         self.doPrintFormat = 1
         self.doPrinter = doPrinter(self.doPrintFormat)
+
+    @property
+    def doPrint(self, enable: bool):
+        self._doPrint = enable
 
 
     def setSpiFormat(self, spi_format: int) -> None:
@@ -48,7 +52,7 @@ class TCPhandler:
             spi_format: TODO Is it ASIC or Doppio SPI format?
         """
         self.spi_format = int(spi_format).to_bytes(1, 'big')
-        if self.doPrint:
+        if self._doPrint:
             print(f'spi_format set to {self.spi_format}')
 
 
@@ -99,7 +103,7 @@ class TCPhandler:
         write_packet = packet_header_array + data_field
         self.tcp_s.sendall(write_packet)
         
-        if self.doPrint:
+        if self._doPrint:
             print(self.doPrinter.commonFunction(write_packet))
         self.packet_count_increment()
 
@@ -117,7 +121,7 @@ class TCPhandler:
         address_bytes = address.to_bytes(2, 'big')
         write_packet = packet_header + address_bytes
         self.tcp_s.sendall(write_packet)
-        if self.doPrint:
+        if self._doPrint:
             print(f'Sent: Read System Register, address: {address}')
         self.packet_count_increment()
 
@@ -132,7 +136,7 @@ class TCPhandler:
             reg_length: Length of system register in bytes. 
         """
         data = self.tcp_s.recv(reg_length)
-        if self.doPrint:
+        if self._doPrint:
             print(self.doPrinter.commonFunction(data))
         data = np.frombuffer(data, dtype=np.uint8)
         return data
@@ -159,7 +163,7 @@ class TCPhandler:
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
 
         write_packet = packet_header + data_packet
-        if self.doPrint:
+        if self._doPrint:
             print(self.doPrinter.commonFunction(write_packet))
         self.tcp_s.sendall(write_packet)
 
@@ -184,7 +188,7 @@ class TCPhandler:
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
         
         write_packet = packet_header + data_packet
-        if self.doPrint:
+        if self._doPrint:
             ...
             #FIXME
             # print(f'READ: Packet header + packet data : {write_packet}')
@@ -207,7 +211,7 @@ class TCPhandler:
         data_packet = self.asic_id + len(configuration_data).to_bytes(2, 'big') + configuration_data
 
         write_packet = packet_header + data_packet
-        if self.doPrint:
+        if self._doPrint:
             print(self.doPrinter.commonFunction(write_packet))         
         self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
@@ -225,7 +229,7 @@ class UDPhandler:
         self.server_ip = server_ip
         self.port = port
 
-        self.doPrint = False
+        self._doPrint = False
 
         self.data_format = data_format
 
