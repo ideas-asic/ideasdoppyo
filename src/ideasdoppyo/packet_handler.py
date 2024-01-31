@@ -38,7 +38,7 @@ class TCPhandler:
         self.doPrinter = doPrinter(self.doPrintFormat)
 
     @property
-    def doPrint(self, enable: bool):
+    def doPrint(self, enable: bool=True):
         self._doPrint = enable
 
 
