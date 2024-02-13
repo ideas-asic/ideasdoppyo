@@ -12,3 +12,6 @@ from ideasdoppyo.packet_handler import TCPhandler
 
 
 _numpy_ is the only external python package required.
+
+
+Don't hesitate with adding an issue to the repo if you wish more functionality or find a bug in the current code.
