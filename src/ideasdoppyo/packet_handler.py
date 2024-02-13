@@ -1,8 +1,8 @@
 
 """
 Sends and receives TCP packets to IDEAS Doppio.
-For TCP, the readout PC is configured as client with the hardware as the network server.
-For UDP, the hardware is configured as network server with the hardware as client.
+For TCP, the hardware is configured as the network server, with the PC as client.
+For UDP, the PC is configured as network server, with the hardware as client.
 """
 
 import numpy as np
@@ -11,6 +11,9 @@ import binascii
 
 
 class TCPhandler:
+    """
+    server_ip: IP on the hardware side.
+    """
     def __init__(self, server_ip: str="10.10.0.50", port: int=50010):
 
         # Setup of socket
@@ -37,7 +40,6 @@ class TCPhandler:
         self.doPrintFormat = 1
         self.doPrinter = doPrinter(self.doPrintFormat)
 
-
     def setSpiFormat(self, spi_format: int) -> None:
         """
         Change system SPI mode.
@@ -52,11 +54,9 @@ class TCPhandler:
         if self.doPrint:
             print(f'spi_format set to {self.spi_format}')
 
-
     def packet_count_increment(self) -> None:
         """Updates packet_count by 1."""
         self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
-
 
     def getPacketHeader(self, packet_type: hex, data_length: hex) -> bytes:
         """
@@ -77,7 +77,6 @@ class TCPhandler:
             # Raise error
             print(f"Packet header size isn't of correct size... Now length was {len(packet_header)}, but it should be {expected_packet_length}.")
         return packet_header_10
-
 
     def writeSysReg(self, address: hex, value: hex, data_length: hex) -> None:
         """
@@ -104,7 +103,6 @@ class TCPhandler:
             print(self.doPrinter.commonFunction(write_packet))
         self.packet_count_increment()
 
-
     def readSysReg(self, address: hex) -> None:
         """
         Reads system register value.
@@ -122,7 +120,6 @@ class TCPhandler:
             print(f'Sent: Read System Register, address: {address}')
         self.packet_count_increment()
 
-
     def getSystemReadBack(self, reg_length: int) -> bytes:
         """
         Use after write or read.
@@ -136,6 +133,21 @@ class TCPhandler:
         data = np.frombuffer(data, dtype=np.uint8)
         return data
 
+    def writeReadShiftRegister(self, configuration_data: bytes) -> None:
+        """
+        Write/read ASICs with shift registers.
+
+        Args:
+            configuration_data: Shift-in data.
+        """
+        PACKET_TYPE = 0xC0
+        data_length = 3 + len(configuration_data)
+
+        packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
+        data_packet = self.asic_id + (len(configuration_data)*8-2).to_bytes(2, 'big') + configuration_data
+        write_packet = packet_header + data_packet
+        self.tcp_s.sendall(write_packet)
+        self.packet_count_increment()
 
     def writeAsicSpiRegister(self, reg_addr: hex, reg_length: int, asic_bit_length: int, write_data: hex) -> None:
         """
@@ -164,7 +176,6 @@ class TCPhandler:
 
         self.packet_count_increment()
 
-
     def readAsicSpiExRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
         """
         Read an ASIC SPI Register.
@@ -191,30 +202,14 @@ class TCPhandler:
 
         self.packet_count_increment()
 
-
-    def writeReadShiftRegister(self, configuration_data: bytes) -> None:
-        """
-        Write/read ASICs with shift registers.
-
-        Args:
-            configuration_data: Shift-in data.
-        """
-        PACKET_TYPE = 0xC0
-        data_length = 3 + len(configuration_data)
-
-        packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
-        data_packet = self.asic_id + (len(configuration_data)*8-2).to_bytes(2, 'big') + configuration_data
-        write_packet = packet_header + data_packet
-        #if self.doPrint:
-            #print(self.doPrinter.commonFunction(write_packet))
-        self.tcp_s.sendall(write_packet)
-        self.packet_count_increment()
-
     def socketClose(self):
         self.tcp_s.close()
 
 
 class UDPhandler:
+    """
+    server_ip: IP on the PC side.
+    """
     def __init__(self, data_format: int, server_ip: str="10.10.0.100", port: int=50011):
         """
         Args:
@@ -326,5 +321,7 @@ if __name__ == "__main__":
     # Set up tcp instance
     tcp = TCPhandler("10.10.0.50", 50010)
     print(tcp)
+    tcp.socketClose()
     udp = UDPhandler("10.10.0.100", port=50011)
     print(udp)
+    udp.socketClose()
