@@ -133,8 +133,6 @@ class TCPhandler:
             reg_length: Length of system register in bytes.
         """
         data = self.tcp_s.recv(reg_length)
-        #if self.doPrint:
-        #    print(self.doPrinter.commonFunction(data))
         data = np.frombuffer(data, dtype=np.uint8)
         return data
 
@@ -217,7 +215,7 @@ class TCPhandler:
 
 
 class UDPhandler:
-    def __init__(self, data_format, server_ip="10.10.0.100", port=50011):
+    def __init__(self, data_format: int, server_ip: str="10.10.0.100", port: int=50011):
         """
         Args:
             data_format: {0: Image data packet, 1: Multi-event pulse height data packet, 2: Single-event pulse height data packet, 3: Trigger Time Data P}
@@ -243,7 +241,12 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNsamples(self, N) -> np.ndarray:
+    def collectNsamples(self, N: int) -> np.ndarray:
+        """
+        Collects N data samples.
+        
+        Each packet must be less than 1024 bytes.
+        """
         data_array = np.array([])
         this_index = 0
         while this_index <= N:
@@ -253,7 +256,12 @@ class UDPhandler:
             this_index += len(data)
         return data_array
 
-    def socketClose(self):
+    def data2csv(self, data_array: np.ndarray, filename: str) -> None:
+        """Store captured data to a csv-file."""
+        data_array.tofile(filename, sep=';')
+
+    def socketClose(self) -> None:
+        """Closes UDP connection."""
         self.udp_s.shutdown(socket.SHUT_RDWR)
         self.udp_s.close()
 
