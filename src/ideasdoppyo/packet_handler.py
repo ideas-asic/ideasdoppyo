@@ -262,6 +262,11 @@ class UDPhandler:
 
 
 class doPrinter:
+    """
+    Formats printing of TCPhandler object.
+
+    NOTE only active if doPrint = True (for TCPhandler object). Similarly select doPrintFormat there.
+    """
     def __init__(self, doPrintFormat):
         self.data_bytes = None
 
@@ -277,12 +282,15 @@ class doPrinter:
         }
 
     def commonFunction(self, data_bytes: bytes):
+        """
+        Call this function to format data_bytes, to format doPrintFormat.
+        """
         self.data_bytes = data_bytes
         doPrintFunctions = {
             # Key: doPrintFormat
             1: self.default_doPrintFormat(),
             2: self.uint8_doPrintFormat(),
-            3: ...
+            3: ...                                  # Please add issue to github repo if you wish another print format.
         }
         printString = doPrintFunctions[self.doPrintFormat]
         return printString
