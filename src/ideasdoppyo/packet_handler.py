@@ -30,7 +30,7 @@ class TCPhandler:
         self.sequencer_flag = '{0:02b}'.format(0)
         self.packet_count = '{0:014b}'.format(0)
         self.reserved = '{0:032b}'.format(0)
-        self.spi_format = int(2).to_bytes(1, 'big')
+        self.spi_format = int(2).to_bytes(1, 'big')         # System level SPI format.
 
         # printer instance
         self.doPrint = True
@@ -40,12 +40,13 @@ class TCPhandler:
 
     def setSpiFormat(self, spi_format: int) -> None:
         """
-        Updates spi format.
+        Change system SPI mode.
 
-        TODO: Is this for ASIC SPI Format or for Doppio SPI format.
+        Note that the system SPI format may be different than its containing ASIC SPI mode.
+        For IDEAS Doppio based systems, use spi_format = 2.
 
         Args:
-            spi_format: TODO Is it ASIC or Doppio SPI format?
+            spi_format: System SPI mode.
         """
         self.spi_format = int(spi_format).to_bytes(1, 'big')
         if self.doPrint:
