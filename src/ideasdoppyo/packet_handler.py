@@ -145,7 +145,7 @@ class TCPhandler:
 
         packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
         conf_len = len(configuration_data)          # Byte-length of configuration register 
-        data_packet = self.asic_id + (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big') + configuration_data
+        data_packet = self.asic_id + (conf_len*8+conf_len%8).to_bytes(2, 'big') + configuration_data
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
@@ -195,10 +195,6 @@ class TCPhandler:
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
 
         write_packet = packet_header + data_packet
-        if self.doPrint:
-            ...
-            #FIXME
-            # print(f'READ: Packet header + packet data : {write_packet}')
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
@@ -222,6 +218,13 @@ class UDPhandler:
         self.doPrint = False
 
         self.data_format = data_format
+        header_length_dict = {
+            0 : 20,
+            1 : ...,
+            2 : ...,
+            3 : ...
+        }
+        self.header_length_dict  = header_length_dict[data_format]
 
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
@@ -237,19 +240,25 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNsamples(self, N: int) -> np.ndarray:
+    def collectNpackets(self, N: int, include_header = False) -> np.ndarray:
         """
         Collects N data samples.
         
         Each packet must be less than 1024 bytes.
         """
         data_array = np.array([])
-        this_index = 0
-        while this_index <= N:
-            data = self.receiveData()
-            data = np.frombuffer(data, '>H') # [20:]                # FIXME: Specific data format! [20:] for imaging format, but important to get header in some situations..
+        packet_counter = 0
+        if include_header:
+            filter_index = self.header_length_dict
+        else:
+            filter_index = 0
+            
+        while packet_counter <= N:
+            data_packet = self.receiveData()
+            data = np.frombuffer(data_packet, '>H')[filter_index]
             data_array = np.concatenate((data_array, data))
-            this_index += len(data)
+            packet_counter += 1
+
         return data_array
 
     def data2csv(self, data_array: np.ndarray, filename: str) -> None:
