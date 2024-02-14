@@ -249,9 +249,9 @@ class UDPhandler:
         data_array = np.array([])
         packet_counter = 0
         if include_header:
-            filter_index = self.header_length_dict
-        else:
             filter_index = 0
+        else:
+            filter_index = self.header_length_dict
             
         while packet_counter <= N:
             data_packet = self.receiveData()
