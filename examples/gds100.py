@@ -1,7 +1,7 @@
 
 import sys
 import os
-sys.path.insert(0, './../src/ideasdoppyo/')
+sys.path.append(os.getcwd()+'\\src\\ideasdoppyo')
 from packet_handler import TCPhandler
 
 tcp = TCPhandler()
