@@ -237,20 +237,25 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNsamples(self, N: int) -> np.ndarray:
+    def collectNpackets(self, N: int, include_header = True) -> bytes:
         """
-        Collects N data samples.
-        
+        Collects N data packets.
+
         Each packet must be less than 1024 bytes.
         """
-        data_array = np.array([])
-        this_index = 0
-        while this_index <= N:
-            data = self.receiveData()
-            data = np.frombuffer(data, '>H') # [20:]                # FIXME: Specific data format! [20:] for imaging format, but important to get header in some situations..
-            data_array = np.concatenate((data_array, data))
-            this_index += len(data)
-        return data_array
+        data_bytes = b''
+        packet_counter = 0
+        if include_header:
+            filter_index = 0
+        else:
+            filter_index = self.header_byte_length
+
+        while packet_counter <= N:
+            data_packet = self.receiveData()[filter_index:]
+            data_bytes += data_packet
+            packet_counter += 1
+
+        return data_bytes
 
     def data2csv(self, data_array: np.ndarray, filename: str) -> None:
         """Store captured data to a csv-file."""
