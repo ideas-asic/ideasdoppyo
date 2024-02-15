@@ -30,7 +30,7 @@ class TCPhandler:
         # For SPI transactions
         self.version = '{0:03b}'.format(0)
         self.system_number = '{0:05b}'.format(0)
-        self.sequencer_flag = '{0:02b}'.format(0)
+        self.sequence_flag = '{0:02b}'.format(0)
         self.packet_count = '{0:014b}'.format(0)
         self.reserved = '{0:032b}'.format(0)
         self.spi_format = int(2).to_bytes(1, 'big')         # System level SPI format.
@@ -39,6 +39,21 @@ class TCPhandler:
         self.doPrint = True
         self.doPrintFormat = 1
         self.doPrinter = doPrinter(self.doPrintFormat)
+
+    def setSequenceFlag(self, value: int):
+        """
+        Change sequence_flag.
+        
+        '00': Standalone, '01': First packet, '10': Continuation Packet, '11': Last packet.
+        """
+        options = ['00', '01', '10', '11']
+        sequence_flag = '{0:02b}'.format(value)
+        assert (sequence_flag in options), f"sequence_flag should be 0, 1, 2 or 3"
+        self.sequence_flag = sequence_flag
+
+    def packet_count_increment(self) -> None:
+        """Updates packet_count by 1."""
+        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
 
     def setSpiFormat(self, spi_format: int) -> None:
         """
@@ -52,11 +67,7 @@ class TCPhandler:
         """
         self.spi_format = int(spi_format).to_bytes(1, 'big')
         if self.doPrint:
-            print(f'spi_format set to {self.spi_format}')
-
-    def packet_count_increment(self) -> None:
-        """Updates packet_count by 1."""
-        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
+            print(f'spi_format set to {self.spi_format}') 
 
     def getPacketHeader(self, packet_type: hex, data_length: hex) -> bytes:
         """
@@ -69,7 +80,7 @@ class TCPhandler:
         packet_type_bin = '{0:08b}'.format(packet_type)
         data_length_bin = '{0:016b}'.format(data_length)
 
-        packet_header = self.version + self.system_number + packet_type_bin + self.sequencer_flag + self.packet_count + self.reserved + data_length_bin
+        packet_header = self.version + self.system_number + packet_type_bin + self.sequence_flag + self.packet_count + self.reserved + data_length_bin
         packet_header_10 = int(packet_header, 2).to_bytes(10, 'big')
 
         expected_packet_length = 3+5+8+2+14+32+16
@@ -228,8 +239,12 @@ class UDPhandler:
 
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
-        # udp_s.settimeout(10.)
+        udp_s.settimeout(None)
         self.udp_s = udp_s
+    
+    def setTimeout(self, timeout: float):
+        """Set timeout on udp."""
+        self.udp_s.settimeout(timeout)
 
     def receiveData(self) -> bytes:
         """
