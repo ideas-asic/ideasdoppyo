@@ -144,7 +144,7 @@ class TCPhandler:
         data_length = 3 + len(configuration_data)
 
         packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
-        conf_len = len(configuration_data)          # Byte-length of configuration register 
+        conf_len = len(configuration_data)          # Byte-length of configuration register
         data_packet = self.asic_id + (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big') + configuration_data
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
@@ -226,6 +226,7 @@ class UDPhandler:
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
         # udp_s.settimeout(10.)
+        # TODO create a way to clean exit while waiting for data.
         self.udp_s = udp_s
 
     def receiveData(self) -> bytes:
@@ -237,20 +238,41 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNsamples(self, N: int) -> np.ndarray:
+    def collectNpackets(self, N: int) -> np.ndarray:
         """
         Collects N data samples.
-        
+
         Each packet must be less than 1024 bytes.
         """
         data_array = np.array([])
-        this_index = 0
-        while this_index <= N:
+        packet_counter = 0
+        while packet_counter <= N:
             data = self.receiveData()
+            print(data)
             data = np.frombuffer(data, '>H') # [20:]                # FIXME: Specific data format! [20:] for imaging format, but important to get header in some situations..
             data_array = np.concatenate((data_array, data))
-            this_index += len(data)
+            packet_counter += 1
         return data_array
+
+    def collectNpackets_GDS100(self, N: int) -> np.ndarray:
+        """
+        Collects N data samples.
+
+        Each packet must be less than 1024 bytes.
+        """
+
+        data_array = np.array([])
+        data_string = b''
+        packet_counter = 0
+        while packet_counter <= N:
+            data = self.receiveData()
+            print(len(data))
+            #data = np.frombuffer(data, '>H') # [20:]                # FIXME: Specific data format! [20:] for imaging format, but important to get header in some situations..
+            #data_array = np.concatenate((data_array, data))
+            packet_counter += 1
+            data_string += data
+
+        return data_string
 
     def data2csv(self, data_array: np.ndarray, filename: str) -> None:
         """Store captured data to a csv-file."""
