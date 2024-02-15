@@ -256,13 +256,16 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNpackets(self, N: int, include_header = False) -> np.ndarray:
+
+    def collectNpackets(self, N: int, include_header = True) -> bytes:
         """
-        Collects N data samples.
+        Collects N data packets.
 
         Each packet must be less than 1024 bytes.
         """
-        data_array = np.array([])
+
+        data_bytes = b''
+
         packet_counter = 0
         if include_header:
             filter_index = 0
@@ -270,12 +273,11 @@ class UDPhandler:
             filter_index = self.header_byte_length
 
         while packet_counter <= N:
-            data_packet = self.receiveData()
-            data = np.frombuffer(data_packet, '>H')[filter_index]
-            data_array = np.concatenate((data_array, data))
+            data_packet = self.receiveData()[filter_index:]
+            data_bytes += data_packet
             packet_counter += 1
 
-        return data_array
+        return data_bytes
 
     def collectNpackets_GDS100(self, N: int) -> np.ndarray:
         """
