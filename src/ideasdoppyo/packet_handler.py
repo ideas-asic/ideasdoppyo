@@ -221,7 +221,7 @@ class UDPhandler:
     def __init__(self, data_format: int, server_ip: str="10.10.0.100", port: int=50011):
         """
         Args:
-            data_format: {0: Image data packet, 1: Multi-event pulse height data packet, 2: Single-event pulse height data packet, 3: Trigger Time Data P}
+            data_format: {0: Image, 1: Multi-event pulse height, 2: Single-event pulse height, 3: Trigger Time, 4: Pipeline Sampling}
         """
         self.server_ip = server_ip
         self.port = port
@@ -229,13 +229,14 @@ class UDPhandler:
         self.doPrint = False
 
         self.data_format = data_format
-        header_length_dict = {
+        header_byte_length_dict = {
             0 : 20,
-            1 : ...,
-            2 : ...,
-            3 : ...
+            1 : 3,
+            2 : 7,
+            3 : 0,
+            4 : 14
         }
-        self.header_length_dict  = header_length_dict[data_format]
+        self.header_byte_length  = header_byte_length_dict[data_format]
 
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
@@ -266,7 +267,7 @@ class UDPhandler:
         if include_header:
             filter_index = 0
         else:
-            filter_index = self.header_length_dict
+            filter_index = self.header_byte_length
             
         while packet_counter <= N:
             data_packet = self.receiveData()
