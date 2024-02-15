@@ -30,7 +30,7 @@ class TCPhandler:
         # For SPI transactions
         self.version = '{0:03b}'.format(0)
         self.system_number = '{0:05b}'.format(0)
-        self.sequencer_flag = '{0:02b}'.format(0)
+        self.sequence_flag = '{0:02b}'.format(0)
         self.packet_count = '{0:014b}'.format(0)
         self.reserved = '{0:032b}'.format(0)
         self.spi_format = int(2).to_bytes(1, 'big')         # System level SPI format.
@@ -39,6 +39,21 @@ class TCPhandler:
         self.doPrint = True
         self.doPrintFormat = 1
         self.doPrinter = doPrinter(self.doPrintFormat)
+
+    def setSequenceFlag(self, value: int):
+        """
+        Change sequence_flag.
+
+        '00': Standalone, '01': First packet, '10': Continuation Packet, '11': Last packet.
+        """
+        options = ['00', '01', '10', '11']
+        sequence_flag = '{0:02b}'.format(value)
+        assert (sequence_flag in options), f"sequence_flag should be 0, 1, 2 or 3"
+        self.sequence_flag = sequence_flag
+
+    def packet_count_increment(self) -> None:
+        """Updates packet_count by 1."""
+        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
 
     def setSpiFormat(self, spi_format: int) -> None:
         """
@@ -54,10 +69,6 @@ class TCPhandler:
         if self.doPrint:
             print(f'spi_format set to {self.spi_format}')
 
-    def packet_count_increment(self) -> None:
-        """Updates packet_count by 1."""
-        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
-
     def getPacketHeader(self, packet_type: hex, data_length: hex) -> bytes:
         """
         Constructs packet header based on function.
@@ -69,7 +80,7 @@ class TCPhandler:
         packet_type_bin = '{0:08b}'.format(packet_type)
         data_length_bin = '{0:016b}'.format(data_length)
 
-        packet_header = self.version + self.system_number + packet_type_bin + self.sequencer_flag + self.packet_count + self.reserved + data_length_bin
+        packet_header = self.version + self.system_number + packet_type_bin + self.sequence_flag + self.packet_count + self.reserved + data_length_bin
         packet_header_10 = int(packet_header, 2).to_bytes(10, 'big')
 
         expected_packet_length = 3+5+8+2+14+32+16
@@ -145,7 +156,7 @@ class TCPhandler:
 
         packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
         conf_len = len(configuration_data)          # Byte-length of configuration register
-        data_packet = self.asic_id + (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big') + configuration_data
+        data_packet = self.asic_id + (conf_len*8+conf_len%8-8).to_bytes(2, 'big') + configuration_data
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
@@ -195,10 +206,6 @@ class TCPhandler:
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
 
         write_packet = packet_header + data_packet
-        if self.doPrint:
-            ...
-            #FIXME
-            # print(f'READ: Packet header + packet data : {write_packet}')
         self.tcp_s.sendall(write_packet)
 
         self.packet_count_increment()
@@ -214,7 +221,7 @@ class UDPhandler:
     def __init__(self, data_format: int, server_ip: str="10.10.0.100", port: int=50011):
         """
         Args:
-            data_format: {0: Image data packet, 1: Multi-event pulse height data packet, 2: Single-event pulse height data packet, 3: Trigger Time Data P}
+            data_format: {0: Image, 1: Multi-event pulse height, 2: Single-event pulse height, 3: Trigger Time, 4: Pipeline Sampling}
         """
         self.server_ip = server_ip
         self.port = port
@@ -222,12 +229,23 @@ class UDPhandler:
         self.doPrint = False
 
         self.data_format = data_format
+        header_byte_length_dict = {
+            0 : 20,
+            1 : 3,
+            2 : 7,
+            3 : 0,
+            4 : 14
+        }
+        self.header_byte_length  = header_byte_length_dict[data_format]
 
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
-        # udp_s.settimeout(10.)
-        # TODO create a way to clean exit while waiting for data.
+        udp_s.settimeout(None)
         self.udp_s = udp_s
+
+    def setTimeout(self, timeout: float):
+        """Set timeout on udp."""
+        self.udp_s.settimeout(timeout)
 
     def receiveData(self) -> bytes:
         """
@@ -238,7 +256,7 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNpackets(self, N: int) -> np.ndarray:
+    def collectNpackets(self, N: int, include_header = False) -> np.ndarray:
         """
         Collects N data samples.
 
@@ -246,12 +264,17 @@ class UDPhandler:
         """
         data_array = np.array([])
         packet_counter = 0
+        if include_header:
+            filter_index = 0
+        else:
+            filter_index = self.header_byte_length
+
         while packet_counter <= N:
-            data = self.receiveData()
-            print(data)
-            data = np.frombuffer(data, '>H') # [20:]                # FIXME: Specific data format! [20:] for imaging format, but important to get header in some situations..
+            data_packet = self.receiveData()
+            data = np.frombuffer(data_packet, '>H')[filter_index]
             data_array = np.concatenate((data_array, data))
             packet_counter += 1
+
         return data_array
 
     def collectNpackets_GDS100(self, N: int) -> np.ndarray:
