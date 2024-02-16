@@ -4,7 +4,7 @@ This python package is a python implementation of the IDEAS Doppio protocol.
 The Doppio protocol is used to communicate with IDEAS ASIC development
 boards and some other IDEAS products via TCP/IP.
 
-##Usage
+## Usage
 
 To use it as part of your code:
 
@@ -27,7 +27,7 @@ from ideasdoppyo.udphandler import UDPhandler
 
 _numpy_ is the only external python package required.
 
-##Feedback and Development
+## Feedback and Development
 
 This software is provided on a best effort basis as an additional tool
 to users.
@@ -35,7 +35,7 @@ to users.
 Please don't hesitate with registering feature requests and bug reports on
 the GitHub issue tracker for this repository.
 
-##Integrated Detector Electronics AS
+## Integrated Detector Electronics AS
 
 IDEAS (https://ideas.no/) is based in Oslo, Norway.
 
