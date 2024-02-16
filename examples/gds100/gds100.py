@@ -2,7 +2,7 @@
 import sys
 import os
 sys.path.append(os.getcwd()+'\\src\\ideasdoppyo')
-from packet_handler import TCPhandler
+from tcphandler import TCPhandler
 
 tcp = TCPhandler()
 

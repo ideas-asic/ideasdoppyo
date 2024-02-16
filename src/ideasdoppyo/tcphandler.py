@@ -185,7 +185,7 @@ class TCPhandler:
 
         packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
         conf_len = len(configuration_data)          # Byte-length of configuration register
-        data_packet = self.asic_id + (conf_len*8+conf_len%8-8).to_bytes(2, 'big') + configuration_data
+        data_packet = self.asic_id + (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big') + configuration_data
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
         self.packet_count_increment()
