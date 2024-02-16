@@ -1,9 +1,7 @@
 
-import sys
-sys.path.insert(0, './../src/')
-from packet_handler import TCPhandler
-import numpy as np
-
+import sys, os
+sys.path.append('.\\..\\src\\ideasdoppyo')
+from tcphandler import TCPhandler
 
 tcp = TCPhandler()
 
@@ -18,11 +16,9 @@ data = tcp.getSystemReadBack(200)
 # Enable ASIC SPI
 tcp.writeAsicSpiRegister(0xFA00, 1, 8, 5)
 data = tcp.getSystemReadBack(200)
-print(f'SPI Reg 0: {data}')
 
 tcp.writeAsicSpiRegister( 0xFA01, 1, 8, 26)
 data = tcp.getSystemReadBack(200)
-print(f'SPI Reg 1: {data}')
 
 # Program ASIC analog outputs high...
 tcp.writeAsicSpiRegister(0x00CD, 1, 8, 3)

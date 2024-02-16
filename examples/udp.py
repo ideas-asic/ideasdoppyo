@@ -2,9 +2,10 @@ import socket
 import matplotlib.pyplot as plt
 import numpy as np
 
-import sys
-sys.path.insert(0, './../src/ideasdoppyo/')
-from ideasdoppyo.packet_handler import UDPhandler
+import sys, os
+sys.path.append('.\\..\\src\\ideasdoppyo')
+
+from udphandler import UDPhandler
 
 def main():
     data_array = udp.collectNpackets(N=1000, include_header=False)

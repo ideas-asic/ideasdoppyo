@@ -1,7 +1,6 @@
 
-import sys
-import os
-sys.path.append(os.getcwd()+'\\src\\ideasdoppyo')
+import sys, os
+sys.path.append('.\\..\\..\\src\\ideasdoppyo')
 from tcphandler import TCPhandler
 
 tcp = TCPhandler()

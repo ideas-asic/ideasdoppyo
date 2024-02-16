@@ -1,11 +1,11 @@
-import sys
-import os
+
 import socket
 import numpy as np
 import pandas as pd
 import time
 
-sys.path.append(os.getcwd()+'\\src\\ideasdoppyo')
+import sys, os
+sys.path.append('.\\..\\..\\src\\ideasdoppyo')
 
 from udphandler import UDPhandler
 from dataformats import pipeline_sampling_format, common_header_format, pipeline_data_format

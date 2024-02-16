@@ -7,7 +7,8 @@ python -m pip install git+https://github.com/ideas-asic/ideasdoppyo.git
 ```
 Import in your script using, e.g.,:
 ```python 
-from ideasdoppyo.packet_handler import TCPhandler
+from ideasdoppyo.tcphandler import TCPhandler
+from ideasdoppyo.udphandler import UDPhandler
 ```
 
 
