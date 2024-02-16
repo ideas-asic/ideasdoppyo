@@ -8,6 +8,7 @@ For UDP, the PC is configured as network server, with the hardware as client.
 import numpy as np
 import socket
 import binascii
+from dataformats import common_header_format, pipeline_sampling_format
 
 class UDPhandler:
     """
@@ -23,6 +24,7 @@ class UDPhandler:
 
         self.doPrint = False
 
+        # TODO: change to packet ID to fit with documentation
         self.data_format = data_format
         header_byte_length_dict = {
             0 : 20,
@@ -33,17 +35,17 @@ class UDPhandler:
         }
 
         # FIXME
-        self.mask_common_header = False
+        self.mask_header = False
+        self.mask_common_header = False # Only mask common header
+
         self.header_byte_length  = header_byte_length_dict[data_format]
-        if self.mask_common_header:
-            self.header_byte_length += 10
 
         udp_s = socket.socket(type=2)
         udp_s.bind((self.server_ip, self.port))
         udp_s.settimeout(None)
         self.udp_s = udp_s
 
-    def getDataPacketFormat(self):
+    def loadDataPacketFormat(self):
         ...
 
     def setTimeout(self, timeout: float):
@@ -59,7 +61,7 @@ class UDPhandler:
         data, _ = self.udp_s.recvfrom(1024)
         return data
 
-    def collectNpackets(self, N: int, include_header = True) -> bytes:
+    def collectNpackets(self, N: int) -> bytes:
         """
         Collects N data samples.
 
@@ -67,10 +69,13 @@ class UDPhandler:
         """
         data_bytes = b''
         packet_counter = 0
-        if include_header:
-            filter_index = 0
+
+        if self.mask_common_header:
+            filter_index = 10
+        elif self.mask_header:
+            filter_index = self.header_byte_length + 10
         else:
-            filter_index = self.header_byte_length
+            filter_index = 0
 
         while packet_counter <= N:
             data_packet = self.receiveData()[filter_index:]
