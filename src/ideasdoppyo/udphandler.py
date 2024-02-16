@@ -34,7 +34,6 @@ class UDPhandler:
             4 : 14
         }
 
-        # FIXME
         self.mask_header = False
         self.mask_common_header = False # Only mask common header
 
