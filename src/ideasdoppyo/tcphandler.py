@@ -157,20 +157,42 @@ class TCPhandler:
         write_packet = packet_header + address_bytes
         self.tcp_s.sendall(write_packet)
         if self.doPrint:
-            print(f'Sent: Read System Register, address: {address}')
+            print(self.doPrinter.commonFunction(write_packet))
         self.packet_count_increment()
 
-    def getSystemReadBack(self, reg_length: int) -> bytes:
+    def _commonReadBack(self, expected_data_length: int) -> bytes:
         """
-        Use after write or read.
+        Internal function called by getSystemReadBack and getASICSPIReadBack. 
+        """
+        data = b''
+        while len(data) < expected_data_length:
+            data += self.tcp_s.recv(expected_data_length)
+        if self.doPrint:
+            print(self.doPrinter.commonFunction(data))
+        return data
+
+    def getSystemReadBack(self, len_reg_data: int) -> bytes:
+        """
+        Use after write or read targeting the system.
 
         Received packet with format 0x12.
 
         Args:
             reg_length: Length of system register in bytes.
         """
-        data = self.tcp_s.recv(reg_length)
-        data = np.frombuffer(data, dtype=np.uint8)
+        expected_data_length = 10 + 2 + 1 + len_reg_data
+        data = self._commonReadBack(expected_data_length)     
+        return data
+
+    def getASICSPIReadBack(self, len_reg_data) -> bytes:
+        """
+        Use after write or read targeting the ASIC using SPI.
+
+        Args:
+            len_reg_data: Register length for ...
+        """
+        expected_data_length = 10 + 1 + 1 + 2 + 2 + len_reg_data
+        data = self._commonReadBack(expected_data_length)
         return data
 
     def writeReadShiftRegister(self, configuration_data: bytes) -> None:
@@ -239,7 +261,8 @@ class TCPhandler:
 
         self.packet_count_increment()
 
-    def socketClose(self):
+    def socketClose(self) -> None:
+        """Closes TCP socket."""
         self.tcp_s.close()
 
 
@@ -288,10 +311,15 @@ class doPrinter:
         if packet_type in [0x10, 0x12]:
             address = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]).upper()
+        elif packet_type in [0x11]:
+            address = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
+            value = ...
         elif packet_type in [0xC2, 0xC4]:
             address = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]).upper()
         else:
+            # TODO
+            # Packet types [0x10, 0x11, 0x12, 0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xD0, 0xD1, ... 0xD6, 0xDA]
             address = value = ...
         printString = f'{string_packet_type} Addr: {address} - Val: {value}'
         return printString
