@@ -80,10 +80,6 @@ class TCPhandler:
         assert (sequence_flag in options), f"sequence_flag should be 0, 1, 2 or 3"
         self.sequence_flag = sequence_flag
 
-    def packet_count_increment(self) -> None:
-        """Updates packet_count by 1."""
-        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
-
     def setSpiFormat(self, spi_format: int) -> None:
         """
         Change system SPI mode.
@@ -98,67 +94,33 @@ class TCPhandler:
         if self.doPrint:
             print(f'spi_format set to {self.spi_format}')
 
-    def getPacketHeader(self, packet_type: hex, data_length: hex) -> bytes:
+    def socketClose(self) -> None:
+        """Closes TCP socket."""
+        self.tcp_s.close()
+
+    def _packetCountIncrement(self) -> None:
+        """Updates packet_count by 1."""
+        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
+
+    def _getPacketHeader(self, packet_type: hex, len_reg_data: hex) -> bytes:
         """
         Constructs packet header based on function.
 
         Args:
             packet_type: Defines how the packet data field should be decoded.
-            data_length: Number of bytes proceeding header.
+            len_reg_data: Number of bytes proceeding header.
         """
         packet_type_bin = '{0:08b}'.format(packet_type)
-        data_length_bin = '{0:016b}'.format(data_length)
+        data_length_bin = '{0:016b}'.format(len_reg_data)
 
         packet_header = self.version + self.system_number + packet_type_bin + self.sequence_flag + self.packet_count + self.reserved + data_length_bin
         packet_header_10 = int(packet_header, 2).to_bytes(10, 'big')
 
         expected_packet_length = 3+5+8+2+14+32+16
         if len(packet_header) != expected_packet_length:
-            # Raise error
+            # TODO Raise error
             print(f"Packet header size isn't of correct size... Now length was {len(packet_header)}, but it should be {expected_packet_length}.")
         return packet_header_10
-
-    def writeSysReg(self, address: hex, value: hex, data_length: hex) -> None:
-        """
-        Writes system register value.
-
-        Args:
-            address: Register map address for the register to be write.
-            value: Length of the data to write.
-            data_length: Variable length of register data to write.
-        """
-        PACKET_TYPE = 0x10
-        packet_data_length = 3 + data_length
-        packet_header_array = self.getPacketHeader(packet_type=PACKET_TYPE, data_length=packet_data_length)
-
-        reg_addr_bytes = address.to_bytes(2, 'big')
-        reg_length_bytes = data_length.to_bytes(1, 'big')
-        data_bytes = value.to_bytes(data_length, 'big')
-        data_field = reg_addr_bytes + reg_length_bytes + data_bytes
-
-        write_packet = packet_header_array + data_field
-        self.tcp_s.sendall(write_packet)
-
-        if self.doPrint:
-            print(self.doPrinter.commonFunction(write_packet))
-        self.packet_count_increment()
-
-    def readSysReg(self, address: hex) -> None:
-        """
-        Reads system register value.
-
-        Args:
-            address: System register address.
-        """
-        PACKET_TYPE = 0x11
-        DATA_LENGTH = 0x02
-        packet_header = self.getPacketHeader(PACKET_TYPE, DATA_LENGTH)
-        address_bytes = address.to_bytes(2, 'big')
-        write_packet = packet_header + address_bytes
-        self.tcp_s.sendall(write_packet)
-        if self.doPrint:
-            print(self.doPrinter.commonFunction(write_packet))
-        self.packet_count_increment()
 
     def _commonReadBack(self, expected_data_length: int) -> bytes:
         """
@@ -168,64 +130,108 @@ class TCPhandler:
         while len(data) < expected_data_length:
             data += self.tcp_s.recv(expected_data_length)
         if self.doPrint:
-            print(self.doPrinter.commonFunction(data))
+            self.doPrinter.data_bytes = data
+            print(self.doPrinter)
         return data
+
+    def writeSysReg(self, reg_addr: hex, value: hex, len_reg_data: hex) -> None:
+        """
+        Writes system register value. Packet type 0x10.
+
+        Args:
+            reg_addr: System register address.
+            value: Value to be written.
+            len_reg_data: Byte length of system register.
+        """
+        PACKET_TYPE = 0x10
+        packet_data_length = 3 + len_reg_data
+        packet_header_array = self._getPacketHeader(packet_type=PACKET_TYPE, len_reg_data=packet_data_length)
+
+        reg_addr_bytes = reg_addr.to_bytes(2, 'big')
+        reg_length_bytes = len_reg_data.to_bytes(1, 'big')
+        data_bytes = value.to_bytes(len_reg_data, 'big')
+        data_field = reg_addr_bytes + reg_length_bytes + data_bytes
+
+        write_packet = packet_header_array + data_field
+        self.tcp_s.sendall(write_packet)
+
+        if self.doPrint:
+            self.doPrinter.data_bytes = write_packet
+            print(self.doPrinter)
+        self._packetCountIncrement()
+
+    def readSysReg(self, reg_addr: hex) -> None:
+        """
+        Reads system register value. Packet type 0x11.
+
+        Args:
+            reg_addr: System register address.
+        """
+        PACKET_TYPE = 0x11
+        DATA_LENGTH = 0x02
+        packet_header = self._getPacketHeader(PACKET_TYPE, DATA_LENGTH)
+        reg_addr_bytes = reg_addr.to_bytes(2, 'big')
+        write_packet = packet_header + reg_addr_bytes
+        self.tcp_s.sendall(write_packet)
+        if self.doPrint:
+            self.doPrinter.data_bytes = write_packet
+            print(self.doPrinter)
+        self._packetCountIncrement()
 
     def getSystemReadBack(self, len_reg_data: int) -> bytes:
         """
-        Use after write or read targeting the system.
-
-        Received packet with format 0x12.
+        Response packet from system to system write/reads. Packet type 0x12.
 
         Args:
-            reg_length: Length of system register in bytes.
+            reg_length: Byte length of system register.
         """
         expected_data_length = 10 + 2 + 1 + len_reg_data
         data = self._commonReadBack(expected_data_length)     
         return data
 
-    def getASICSPIReadBack(self, len_reg_data) -> bytes:
-        """
-        Use after write or read targeting the ASIC using SPI.
-
-        Args:
-            len_reg_data: Register length for ...
-        """
-        expected_data_length = 10 + 1 + 1 + 2 + 2 + len_reg_data
-        data = self._commonReadBack(expected_data_length)
-        return data
-
     def writeReadShiftRegister(self, configuration_data: bytes) -> None:
         """
-        Write/read ASICs with shift registers.
+        Write/read ASICs with shift registers. Packet type 0xC0.
 
         Args:
             configuration_data: Shift-in data.
         """
         PACKET_TYPE = 0xC0
-        data_length = 3 + len(configuration_data)
+        len_reg_data = 3 + len(configuration_data)
 
-        packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
+        packet_header = self._getPacketHeader(PACKET_TYPE, len_reg_data)
         conf_len = len(configuration_data)          # Byte-length of configuration register
-        data_packet = self.asic_id + (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big') + configuration_data
+        conf_bit_len = (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big')
+        data_packet = self.asic_id + conf_bit_len + configuration_data
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
-        self.packet_count_increment()
+        self._packetCountIncrement()
+
+    def getShiftRegisterReadBack(self, len_reg_data: int) -> bytes:
+        """
+        Response packet from system to ASIC shift register write/read. Packet type 0xC1.
+
+        Args:
+            len_reg_data: Byte length of shift register.
+        """
+        expected_data_length = 10 + 1 + 2 + len_reg_data
+        data = self._commonReadBack(expected_data_length)
+        return data
 
     def writeAsicSpiRegister(self, reg_addr: hex, reg_length: int, asic_bit_length: int, write_data: hex) -> None:
         """
-        Write an ASIC SPI register.
+        Write ASIC SPI register. Packet type 0xC2.
 
         Args:
             reg_addr: SPI register address.
-            reg_length: Length of SPI register in bytes.
+            reg_length: Byte length of SPI register.
             asic_bit_length: Number of bit in SPI register.
             write_data: Data to write.
         """
         PACKET_TYPE = 0xC2
-        data_length = 6 + reg_length
+        len_reg_data = 6 + reg_length
 
-        packet_header = self.getPacketHeader(PACKET_TYPE, data_length)
+        packet_header = self._getPacketHeader(PACKET_TYPE, len_reg_data)
 
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         asic_bit_length_bytes = asic_bit_length.to_bytes(2, 'big')
@@ -234,14 +240,15 @@ class TCPhandler:
 
         write_packet = packet_header + data_packet
         if self.doPrint:
-            print(self.doPrinter.commonFunction(write_packet))
+            self.doPrinter.data_bytes = write_packet
+            print(self.doPrinter)
         self.tcp_s.sendall(write_packet)
 
-        self.packet_count_increment()
+        self._packetCountIncrement()
 
-    def readAsicSpiExRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
+    def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
         """
-        Read an ASIC SPI Register.
+        Read ASIC SPI Register. Packet type 0xC3.
 
         Args:
             reg_addr: SPI register address.
@@ -249,7 +256,7 @@ class TCPhandler:
         """
         PACKET_TYPE = 0xC3
         DATA_LENGTH = 6
-        packet_header = self.getPacketHeader(PACKET_TYPE, DATA_LENGTH)
+        packet_header = self._getPacketHeader(PACKET_TYPE, DATA_LENGTH)
 
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         reg_bit_length = reg_bit_length.to_bytes(2, 'big')
@@ -259,11 +266,18 @@ class TCPhandler:
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
 
-        self.packet_count_increment()
+        self._packetCountIncrement()
 
-    def socketClose(self) -> None:
-        """Closes TCP socket."""
-        self.tcp_s.close()
+    def getASICSPIReadBack(self, len_reg_data) -> bytes:
+        """
+        Response packet from system to ASIC SPI write/reads. Packet type 0xC4.
+
+        Args:
+            len_reg_data: Register length for ASIC register.
+        """
+        expected_data_length = 10 + 1 + 1 + 2 + 2 + len_reg_data
+        data = self._commonReadBack(expected_data_length)
+        return data
 
 
 class doPrinter:
@@ -286,11 +300,8 @@ class doPrinter:
             0xC4: "Recv: ASIC SPI Register Read-Back,"
         }
 
-    def commonFunction(self, data_bytes: bytes):
-        """
-        Call this function to format data_bytes, to format doPrintFormat.
-        """
-        self.data_bytes = data_bytes
+    def __str__(self) -> str:
+        """Prints according to selected doPrintFormat."""
         doPrintFunctions = {
             # Key: doPrintFormat
             1: self.default_doPrintFormat(),
@@ -300,7 +311,7 @@ class doPrinter:
         printString = doPrintFunctions[self.doPrintFormat]
         return printString
 
-    def default_doPrintFormat(self):
+    def default_doPrintFormat(self) -> str:
         """
         Examples:
             Send: Write system register,  Reg: 0xFFA0 - Val: 1
@@ -309,19 +320,19 @@ class doPrinter:
         packet_type = self.data_bytes[1]
         string_packet_type = self.printString_packet_type[packet_type]
         if packet_type in [0x10, 0x12]:
-            address = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
+            reg_addr = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]).upper()
         elif packet_type in [0x11]:
-            address = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
+            reg_addr = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
             value = ...
         elif packet_type in [0xC2, 0xC4]:
-            address = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
+            reg_addr = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]).upper()
         else:
             # TODO
             # Packet types [0x10, 0x11, 0x12, 0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xD0, 0xD1, ... 0xD6, 0xDA]
-            address = value = ...
-        printString = f'{string_packet_type} Addr: {address} - Val: {value}'
+            reg_addr = value = ...
+        printString = f'{string_packet_type} Addr: {reg_addr} - Val: {value}'
         return printString
 
     def uint8_doPrintFormat(self):

@@ -52,5 +52,5 @@ shift_reg = '0000000000000000000000000000000000000000000000000000000000000000000
 shift_reg_bytes = int(shift_reg, 16).to_bytes(int(len(shift_reg)/2), 'big')
 
 tcp.writeReadShiftRegister(shift_reg_bytes)
-data = tcp.getSystemReadBack(2000)
+data = tcp.getSystemReadBack(2000)        # FIXME : use getShiftRegisterReadBack
 tcp.socketClose()

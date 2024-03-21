@@ -35,29 +35,35 @@ from tcphandler import TCPhandler
 tcp = TCPhandler()
 
 # Toggle reset ASIC pin from system
-tcp.writeSysReg(0xFFA0, 0, 1)
-data = tcp.getSystemReadBack(200)
-
-tcp.writeSysReg(0xFFA0, 1, 1)
-data = tcp.getSystemReadBack(200)
-
+tcp.writeSysReg(reg_addr=0xFFA0, value=0, len_reg_data=1)
+data = tcp.getSystemReadBack(len_reg_data=1)
+tcp.writeSysReg(reg_addr=0xFFA0, value=1, len_reg_data=1)
+data = tcp.getSystemReadBack(len_reg_data=1)
 
 # Enable ASIC SPI
-tcp.writeAsicSpiRegister(0xFA00, 1, 8, 5)
-data = tcp.getSystemReadBack(200)
-
-tcp.writeAsicSpiRegister( 0xFA01, 1, 8, 26)
-data = tcp.getSystemReadBack(200)
+tcp.writeAsicSpiRegister(reg_addr=0xFA00, reg_length=1, asic_bit_length=8, write_data=5)
+data = tcp.getASICSPIReadBack(len_reg_data=1)
+tcp.writeAsicSpiRegister(reg_addr=0xFA01, reg_length=1, asic_bit_length=8, write_data=26)
+data = tcp.getASICSPIReadBack(len_reg_data=1)
 
 # Program ASIC analog outputs high...
+# ODAC0
 tcp.writeAsicSpiRegister(0x00CD, 1, 8, 3)
-data = tcp.getSystemReadBack(200)
-
+data = tcp.getASICSPIReadBack(len_reg_data=1)
 tcp.writeAsicSpiRegister(0x00CE, 1, 8, 255)
-data = tcp.getSystemReadBack(200)
+data = tcp.getASICSPIReadBack(len_reg_data=1)
+# ODAC1
+tcp.writeAsicSpiRegister(reg_addr=0x00CF, reg_length=1, asic_bit_length=8, write_data=3)
+data = tcp.getASICSPIReadBack(len_reg_data=1)
+tcp.writeAsicSpiRegister(reg_addr=0x00D0, reg_length=1, asic_bit_length=8, write_data=255)
+data = tcp.getASICSPIReadBack(len_reg_data=1)
+# ODAC_enable
+tcp.writeAsicSpiRegister(reg_addr=0x00DD, reg_length=1, asic_bit_length=8, write_data=255)
+data = tcp.getASICSPIReadBack(len_reg_data=1)
 
-tcp.writeAsicSpiRegister(0x00CF, 1, 8, 3)
-data = tcp.getSystemReadBack(200)
+# Measure the power rail currents:
+for i in [0x0A01, 0x0A02, 0x0A03, 0x0A04]:
+   tcp.readSysReg(reg_addr=i)
+   tcp.getSystemReadBack(len_reg_data=2)
 
-tcp.writeAsicSpiRegister(0x00D0, 1, 8, 255)
-data = tcp.getSystemReadBack(200)
+tcp.socketClose()

@@ -1,5 +1,5 @@
 # ideasdoppyo
-This python package is a python implementation of the IDEAS Doppio protocol.
+_ideasdoppyo_ is a python package to communicate towards IDEAS Doppio.
 
 The Doppio protocol is used to communicate with IDEAS ASIC development
 boards and some other IDEAS products via TCP/IP.
