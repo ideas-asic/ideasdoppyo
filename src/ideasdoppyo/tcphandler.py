@@ -205,6 +205,9 @@ class TCPhandler:
         data_packet = self.asic_id + conf_bit_len + configuration_data
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
+        if self.doPrint:
+            self.doPrinter.data_bytes = write_packet
+            print(self.doPrinter)
         self._packetCountIncrement()
 
     def getShiftRegisterReadBack(self, len_reg_data: int) -> bytes:
@@ -252,7 +255,7 @@ class TCPhandler:
 
         Args:
             reg_addr: SPI register address.
-            reg_bit_length: Number of bit in SPI register.
+            reg_bit_length: Number of bits in SPI register.
         """
         PACKET_TYPE = 0xC3
         DATA_LENGTH = 6
@@ -265,7 +268,9 @@ class TCPhandler:
 
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
-
+        if self.doPrint:
+            self.doPrinter.data_bytes = write_packet
+            print(self.doPrinter)
         self._packetCountIncrement()
 
     def getASICSPIReadBack(self, len_reg_data) -> bytes:
@@ -292,12 +297,14 @@ class doPrinter:
         self.doPrintFormat = doPrintFormat
 
         self.printString_packet_type = {
-            0x10: "Sent: Write System Register,      ",
-            0x11: "Sent: Read System Register,       ",
-            0x12: "Recv: System Register Read-Back,  ",
-            0xC2: "Sent: ASIC SPI Register Write,    ",
-            0xC3: "Sent: ASIC SPI Register Read,     ",
-            0xC4: "Recv: ASIC SPI Register Read-Back,"
+            0x10: "Sent: Write System Register,         ",
+            0x11: "Sent: Read System Register,          ",
+            0x12: "Recv: System Register Read-Back,     ",
+            0xC0: "Sent: Write Shift Register,          ",
+            0xC1: "Recv: ASIC Shift Register Read-Back, ",
+            0xC2: "Sent: ASIC SPI Register Write,       ",
+            0xC3: "Sent: ASIC SPI Register Read,        ",
+            0xC4: "Recv: ASIC SPI Register Read-Back,   "
         }
 
     def __str__(self) -> str:
@@ -319,20 +326,32 @@ class doPrinter:
         """
         packet_type = self.data_bytes[1]
         string_packet_type = self.printString_packet_type[packet_type]
+        
         if packet_type in [0x10, 0x12]:
             reg_addr = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]).upper()
+            printString = f'{string_packet_type} Addr: {reg_addr} - Val: {value}'
+
         elif packet_type in [0x11]:
             reg_addr = binascii.hexlify(self.data_bytes[10:12]).decode('utf-8').upper()
-            value = ...
+            printString = f'{string_packet_type} Addr: {reg_addr}'
+        
+        elif packet_type in [0xC0, 0xC1]:
+            value = ' '.join([hex(i)[2:] for i in self.data_bytes[13:]]).upper()
+            printString = f'{string_packet_type} Val: {value}'
+        
+        elif packet_type in [0xC3]:
+            reg_addr = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
+            printString = f'{string_packet_type} Addr: {reg_addr}'
+        
         elif packet_type in [0xC2, 0xC4]:
             reg_addr = binascii.hexlify(self.data_bytes[12:14]).decode('utf-8').upper()
             value = ' '.join([hex(i)[2:] for i in self.data_bytes[16:]]).upper()
+            printString = f'{string_packet_type} Addr: {reg_addr} - Val: {value}'
+        
         else:
-            # TODO
-            # Packet types [0x10, 0x11, 0x12, 0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xD0, 0xD1, ... 0xD6, 0xDA]
-            reg_addr = value = ...
-        printString = f'{string_packet_type} Addr: {reg_addr} - Val: {value}'
+            printString = 'ERROR! NO VALID PACKET TYPE DETECTED..!'        
+
         return printString
 
     def uint8_doPrintFormat(self):
