@@ -94,6 +94,16 @@ class TCPhandler:
         if self.doPrint:
             print(f'spi_format set to {self.spi_format}')
 
+    def setdoPrintFormat(self, doPrint_format: int) -> None:
+        """
+        Change the doPrintFormat. Updates doPrinter object.
+
+        Args:
+            format: See doPrinter class for available formats.
+        """
+        self.doPrintFormat = doPrint_format
+        self.doPrinter = doPrinter(self.doPrintFormat)
+
     def socketClose(self) -> None:
         """Closes TCP socket."""
         self.tcp_s.close()
@@ -112,10 +122,8 @@ class TCPhandler:
         """
         packet_type_bin = '{0:08b}'.format(packet_type)
         data_length_bin = '{0:016b}'.format(len_reg_data)
-
         packet_header = self.version + self.system_number + packet_type_bin + self.sequence_flag + self.packet_count + self.reserved + data_length_bin
         packet_header_10 = int(packet_header, 2).to_bytes(10, 'big')
-
         expected_packet_length = 3+5+8+2+14+32+16
         if len(packet_header) != expected_packet_length:
             # TODO Raise error
@@ -146,15 +154,12 @@ class TCPhandler:
         PACKET_TYPE = 0x10
         packet_data_length = 3 + len_reg_data
         packet_header_array = self._getPacketHeader(packet_type=PACKET_TYPE, len_reg_data=packet_data_length)
-
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         reg_length_bytes = len_reg_data.to_bytes(1, 'big')
         data_bytes = value.to_bytes(len_reg_data, 'big')
         data_field = reg_addr_bytes + reg_length_bytes + data_bytes
-
         write_packet = packet_header_array + data_field
         self.tcp_s.sendall(write_packet)
-
         if self.doPrint:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
@@ -198,7 +203,6 @@ class TCPhandler:
         """
         PACKET_TYPE = 0xC0
         len_reg_data = 3 + len(configuration_data)
-
         packet_header = self._getPacketHeader(PACKET_TYPE, len_reg_data)
         conf_len = len(configuration_data)          # Byte-length of configuration register
         conf_bit_len = (conf_len*8-(8-conf_len%8)).to_bytes(2, 'big')
@@ -233,20 +237,16 @@ class TCPhandler:
         """
         PACKET_TYPE = 0xC2
         len_reg_data = 6 + reg_length
-
         packet_header = self._getPacketHeader(PACKET_TYPE, len_reg_data)
-
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         asic_bit_length_bytes = asic_bit_length.to_bytes(2, 'big')
         data_bytes = write_data.to_bytes(1, 'big')            # TODO: Not constant
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + asic_bit_length_bytes + data_bytes
-
         write_packet = packet_header + data_packet
         if self.doPrint:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
         self.tcp_s.sendall(write_packet)
-
         self._packetCountIncrement()
 
     def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
@@ -260,12 +260,9 @@ class TCPhandler:
         PACKET_TYPE = 0xC3
         DATA_LENGTH = 6
         packet_header = self._getPacketHeader(PACKET_TYPE, DATA_LENGTH)
-
         reg_addr_bytes = reg_addr.to_bytes(2, 'big')
         reg_bit_length = reg_bit_length.to_bytes(2, 'big')
-
         data_packet = self.asic_id + self.spi_format + reg_addr_bytes + reg_bit_length
-
         write_packet = packet_header + data_packet
         self.tcp_s.sendall(write_packet)
         if self.doPrint:
@@ -360,4 +357,4 @@ class doPrinter:
             [0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # FIXME
         """
         printString = np.frombuffer(self.data_bytes, np.uint8)
-        return printString
+        return str(printString)

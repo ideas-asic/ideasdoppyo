@@ -33,7 +33,8 @@ sys.path.append('.\\..\\src\\ideasdoppyo')
 from tcphandler import TCPhandler
 
 tcp = TCPhandler()
-
+tcp.setdoPrintFormat(doPrint_format=2)
+tcp.setSequenceFlag = 1
 # Toggle reset ASIC pin from system
 tcp.writeSysReg(reg_addr=0xFFA0, value=0, len_reg_data=1)
 data = tcp.getSystemReadBack(len_reg_data=1)
