@@ -69,6 +69,9 @@ class TCPhandler:
         self.doPrintFormat = 1
         self.doPrinter = doPrinter(self.doPrintFormat)
 
+        # TCP spare readback values
+        self.spare_bytes = b''
+
     def setSequenceFlag(self, value: int):
         """
         Change sequence_flag.
@@ -134,11 +137,13 @@ class TCPhandler:
         """
         Internal function called by getSystemReadBack and getASICSPIReadBack. 
         """
-        data = b''
+        data = self.spare_bytes
         while len(data) < expected_data_length:
             data += self.tcp_s.recv(expected_data_length)
+        spare_bytes_length = len(data) - expected_data_length
+        self.spare_bytes = data[-spare_bytes_length:]
         if self.doPrint:
-            self.doPrinter.data_bytes = data
+            self.doPrinter.data_bytes = data[:-spare_bytes_length]
             print(self.doPrinter)
         return data
 
