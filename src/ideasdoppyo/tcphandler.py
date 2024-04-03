@@ -141,7 +141,7 @@ class TCPhandler:
         while len(data) < expected_data_length:
             data += self.tcp_s.recv(expected_data_length)
         spare_bytes_length = len(data) - expected_data_length
-        self.spare_bytes = data[-spare_bytes_length:]
+        self.spare_bytes = data[-spare_bytes_length or None:]
         if self.doPrint:
             self.doPrinter.data_bytes = data[:-spare_bytes_length or None]      # If no spare: Full array is used.
             print(self.doPrinter)
