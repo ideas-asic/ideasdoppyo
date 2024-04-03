@@ -139,7 +139,7 @@ class TCPhandler:
         """
         data = self.spare_bytes
         while len(data) < expected_data_length:
-            data += self.tcp_s.recv(expected_data_length)
+            data += self.tcp_s.recv(1)
         spare_bytes_length = len(data) - expected_data_length
         self.spare_bytes = data[-spare_bytes_length:] if spare_bytes_length != 0 else b''
         if self.doPrint:
