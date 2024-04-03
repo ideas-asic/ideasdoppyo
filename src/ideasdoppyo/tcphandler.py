@@ -145,9 +145,10 @@ class TCPhandler:
         self.spare_bytes = data[-spare_bytes_length:]
         print(f'FOR DEBUG - spare_bytes: {spare_bytes_length}')
         if self.doPrint:
+            print(f'FOR DEBUG - data: {data[:-spare_bytes_length]}')
             self.doPrinter.data_bytes = data[:-spare_bytes_length]
             print(self.doPrinter)
-        return data
+        return data[:-spare_bytes_length]
 
     def writeSysReg(self, reg_addr: hex, value: hex, len_reg_data: hex) -> None:
         """
