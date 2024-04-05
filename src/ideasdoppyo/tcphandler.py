@@ -64,13 +64,15 @@ class TCPhandler:
         self.reserved = '{0:032b}'.format(0)
         self.spi_format = int(2).to_bytes(1, 'big')         # System level SPI format.
 
-        # printer instance
+        # Printer instance
         self.doPrint = True
         self.doPrintFormat = 1
         self.doPrinter = doPrinter(self.doPrintFormat)
 
-        # TCP spare readback values
+        # TCP ReadBack
         self.spare_bytes = b''
+        #self.auto_readback = False
+        self.not_readback = {}                              # packet_count: (address, value)
 
     def setSequenceFlag(self, value: int):
         """
@@ -107,9 +109,55 @@ class TCPhandler:
         self.doPrintFormat = doPrint_format
         self.doPrinter = doPrinter(self.doPrintFormat)
 
+    def setAutoReadBack(self, enable: bool) -> None:
+        """Performes readback automatically after TCP write."""
+        self.auto_readback = enable
+
     def socketClose(self) -> None:
         """Closes TCP socket."""
         self.tcp_s.close()
+
+    def checkReadBack(self) -> bool:
+        """
+        Performs readback on packets that are not yet read back. Validates readback based on packet_number.
+
+        For write packages (0x10 and xC2), we verify correct address and correct value.
+        For read packages (TODO what addresses) we only check that the correct address is read out. 
+        
+        Returns:
+            return_val: If read or write command was successful.
+        """
+        return_val = True
+        n_readbacks = len(self.not_readback)
+
+        len_reg_data = 1                # FIXME Should be a variable
+
+        received_packets = 0
+        while received_packets < n_readbacks:
+            try:
+                data = self.getSystemReadBack(len_reg_data=len_reg_data)
+                print(data)
+                if data:
+                    received_packets += 1 
+                    read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
+                    read_address = int.from_bytes(data[10:12], byteorder='big')
+                    read_value = int.from_bytes(data[13:], byteorder='big')
+                    if self.not_readback[read_packet_count] == (read_address, read_value): pass
+                    else:
+                        print(f'WARNING! writeSysReg DID NOT WORK!')
+                        return_val = False
+                del self.not_readback[read_packet_count]
+            except:
+                pass
+
+        #elif packet_type==0xC2:
+        #    ...
+        # TODO check that you're looking at the correct packet_count
+        # TODO check that the address are correct
+        # TODO check that the value is correct
+
+        # TODO print error message if the address/value is not expected based on packet_count. Can be tested by not inserting a chip, for instance.
+        return return_val
 
     def _packetCountIncrement(self) -> None:
         """Updates packet_count by 1."""
@@ -147,7 +195,7 @@ class TCPhandler:
             print(self.doPrinter)
         return data[:-spare_bytes_length or None]
 
-    def writeSysReg(self, reg_addr: hex, value: hex, len_reg_data: hex) -> None:
+    def writeSysReg(self, reg_addr: hex, value: hex, len_reg_data: hex) -> bool:
         """
         Writes system register value. Packet type 0x10.
 
@@ -155,6 +203,9 @@ class TCPhandler:
             reg_addr: System register address.
             value: Value to be written.
             len_reg_data: Byte length of system register.
+
+        Returns:
+            return_val: Verification that the address and value is correctly written.
         """
         PACKET_TYPE = 0x10
         packet_data_length = 3 + len_reg_data
@@ -168,7 +219,8 @@ class TCPhandler:
         if self.doPrint:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
-        self._packetCountIncrement()
+        self.not_readback[self.packet_count] = (reg_addr, value)
+        self._packetCountIncrement()    
 
     def readSysReg(self, reg_addr: hex) -> None:
         """
