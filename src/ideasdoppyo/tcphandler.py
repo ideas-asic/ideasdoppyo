@@ -310,7 +310,7 @@ class TCPhandler:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
         self.tcp_s.sendall(write_packet)
-        #self.not_readback[self.packet_count] = (reg_addr, value)
+        self.not_readback[self.packet_count] = (self._0xC4_METADATA_LENGTH + len_reg_data, (reg_addr, value))
         self._packetCountIncrement()
 
     def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
