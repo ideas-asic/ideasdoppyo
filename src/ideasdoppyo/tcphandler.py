@@ -133,15 +133,12 @@ class TCPhandler:
         """
         return_val = True
 
-        print(self.not_readback)
-        
         del_indexes = []
         for packet in self.not_readback:
             del_indexes.append(packet)
             try:
                 len_packet_type, len_reg_data = self.not_readback[packet][0]
                 data = self._commonReadBack(len_packet_type + len_reg_data)
-                print(data)
                 if data:
                     read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
                     if len_packet_type == self._0x12_METADATA_LENGTH:
@@ -157,18 +154,18 @@ class TCPhandler:
                     if self.not_readback[read_packet_count][1] == (read_address, read_value): pass
                     else:
                         print(self.not_readback[read_packet_count][1], read_address, read_value)
-                        print(f'WARNING! writeSysReg DID NOT WORK!')
+                        print(f'WARNING! UNEXPECTED RESULT.')
                         return_val = False
             except:
                 print(f'WENT INTO EXCEPT LOOP?')
+                print(self.not_readback)
                 pass
         
         for i in del_indexes:
             del self.not_readback[i]
         
         if self.doPrint:
-            print(f'N={len(del_indexes)} total packages received - {...} correctly written/read.')      # FIXME
-
+            print(f'N={len(del_indexes)} total packages received. Expected readback: {return_val}')
         return return_val
 
     def _packetCountIncrement(self) -> None:
