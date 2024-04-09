@@ -72,7 +72,7 @@ class TCPhandler:
         # TCP ReadBack
         self.spare_bytes = b''
         self.auto_readback = False
-        self.not_readback = {}                              # packet_count: (address, value)
+        self.not_readback = {}                              # packet_count: ((package meta data length, data length), (address, value))
 
         # Length of header + metadata in readback packets
         self._0x12_METADATA_LENGTH = 10 + 2 + 1 
@@ -134,7 +134,7 @@ class TCPhandler:
         return_val = True
 
         del_indexes = []
-        print(self.not_readback)
+        
         for packet in self.not_readback:
             del_indexes.append(packet)
             try:
@@ -158,8 +158,6 @@ class TCPhandler:
                         print(f'WARNING! UNEXPECTED RESULT.')
                         return_val = False
             except:
-                print(f'WENT INTO EXCEPT LOOP?')
-                print(f'Failed on packet: {packet}')
                 pass
         
         for i in del_indexes:
