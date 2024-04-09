@@ -134,6 +134,7 @@ class TCPhandler:
         return_val = True
 
         del_indexes = []
+        print(self.not_readback)
         for packet in self.not_readback:
             del_indexes.append(packet)
             try:
@@ -158,7 +159,7 @@ class TCPhandler:
                         return_val = False
             except:
                 print(f'WENT INTO EXCEPT LOOP?')
-                print(self.not_readback)
+                print(f'Failed on packet: {packet}')
                 pass
         
         for i in del_indexes:
