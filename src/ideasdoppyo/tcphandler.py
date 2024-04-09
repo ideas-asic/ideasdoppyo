@@ -132,37 +132,43 @@ class TCPhandler:
             return_val: If read or write command was successful.
         """
         return_val = True
-        # n_readbacks = len(self.not_readback)
 
         print(self.not_readback)
-
-        len_reg_data = 1                # FIXME Should be a variable
-        # received_packets = 0
         
-        #while received_packets < n_readbacks:
         del_indexes = []
         for packet in self.not_readback:
             del_indexes.append(packet)
             try:
-                data = self._commonReadBack(self.not_readback[packet][0])
-                print(data)             # 
+                len_packet_type, len_reg_data = self.not_readback[packet][0]
+                data = self._commonReadBack(len_packet_type + len_reg_data)
+                print(data)
                 if data:
-                    # received_packets += 1
                     read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
-                    read_address = int.from_bytes(data[10:12], byteorder='big')
-                    read_value = int.from_bytes(data[13:], byteorder='big')
+                    if len_packet_type == self._0x12_METADATA_LENGTH:
+                        READ_ADDR_INDEXES = (10, 12)
+                        READ_VAL_INDEXES = 13               # And rest of pack
+                    elif len_packet_type == self._0xC4_METADATA_LENGTH:
+                        READ_ADDR_INDEXES = (12, 14)
+                        READ_VAL_INDEXES = 16
+                    else:
+                        print(f'WARNING! Unsupported readback packet!')
+                    read_address = int.from_bytes(data[READ_ADDR_INDEXES[0]:READ_ADDR_INDEXES[1]], byteorder='big')             # TODO THIS IS WRONG!!!!!
+                    read_value = int.from_bytes(data[READ_VAL_INDEXES:], byteorder='big')
                     if self.not_readback[read_packet_count][1] == (read_address, read_value): pass
                     else:
+                        print(self.not_readback[read_packet_count][1], read_address, read_value)
                         print(f'WARNING! writeSysReg DID NOT WORK!')
                         return_val = False
-                # del self.not_readback[read_packet_count]
             except:
-                print(f'WENT INTO EXCEPT LOOP?')                # FIXME only for debug
+                print(f'WENT INTO EXCEPT LOOP?')
                 pass
         
         for i in del_indexes:
             del self.not_readback[i]
-            
+        
+        if self.doPrint:
+            print(f'N={len(del_indexes)} total packages received - {...} correctly written/read.')      # FIXME
+
         return return_val
 
     def _packetCountIncrement(self) -> None:
@@ -225,7 +231,7 @@ class TCPhandler:
         if self.doPrint:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
-        self.not_readback[self.packet_count] = (self._0x12_METADATA_LENGTH + len_reg_data, (reg_addr, value))
+        self.not_readback[self.packet_count] = ((self._0x12_METADATA_LENGTH, len_reg_data), (reg_addr, value))
         self._packetCountIncrement()    
 
     def readSysReg(self, reg_addr: hex) -> None:
@@ -310,7 +316,7 @@ class TCPhandler:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
         self.tcp_s.sendall(write_packet)
-        self.not_readback[self.packet_count] = (self._0xC4_METADATA_LENGTH + len_reg_data, (reg_addr, write_data))
+        self.not_readback[self.packet_count] = ((self._0xC4_METADATA_LENGTH, reg_length), (reg_addr, write_data))
         self._packetCountIncrement()
 
     def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
