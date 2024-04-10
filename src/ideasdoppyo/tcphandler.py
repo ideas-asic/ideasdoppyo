@@ -143,7 +143,7 @@ class TCPhandler:
                 if data:
                     read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
                     if len_packet_type == self._0x12_METADATA_LENGTH:
-                        READ_ADDR_INDEXES = (10, 12)
+                        READ_ADDR_INDEXES = (10, 12)            # FIXME These indexes are probably wrong if we dont receive full package...
                         READ_VAL_INDEXES = 13               # And rest of pack
                     elif len_packet_type == self._0xC4_METADATA_LENGTH:
                         READ_ADDR_INDEXES = (12, 14)
@@ -158,6 +158,7 @@ class TCPhandler:
                         print(f'WARNING! UNEXPECTED RESULT.')
                         return_val = False
             except:
+                print(f'spare bytes?: {self.spare_bytes}')
                 pass
         
         for i in del_indexes:
