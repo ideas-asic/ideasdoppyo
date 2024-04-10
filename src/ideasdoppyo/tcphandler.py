@@ -140,8 +140,9 @@ class TCPhandler:
             try:
                 len_packet_type, len_reg_data = self.not_readback[packet][0]
                 data = self._commonReadBack(len_packet_type + len_reg_data)
-                print(data)
+                print(np.frombuffer(data, np.uint8))
                 if data:
+                    print(f'packet: {packet} -  len delindexes: {len(del_indexes)}')
                     read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
                     if len_packet_type == self._0x12_METADATA_LENGTH:
                         READ_ADDR_INDEXES = (10, 12)            # FIXME These indexes are probably wrong if we dont receive full package...
@@ -151,7 +152,7 @@ class TCPhandler:
                         READ_VAL_INDEXES = 16
                     else:
                         print(f'WARNING! Unsupported readback packet!')
-                    read_address = int.from_bytes(data[READ_ADDR_INDEXES[0]:READ_ADDR_INDEXES[1]], byteorder='big')             # TODO THIS IS WRONG!!!!!
+                    read_address = int.from_bytes(data[READ_ADDR_INDEXES[0]:READ_ADDR_INDEXES[1]], byteorder='big')
                     read_value = int.from_bytes(data[READ_VAL_INDEXES:], byteorder='big')
                     if self.not_readback[read_packet_count][1] == (read_address, read_value): pass
                     else:
