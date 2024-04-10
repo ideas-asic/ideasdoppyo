@@ -140,6 +140,7 @@ class TCPhandler:
             try:
                 len_packet_type, len_reg_data = self.not_readback[packet][0]
                 data = self._commonReadBack(len_packet_type + len_reg_data)
+                print(data)
                 if data:
                     read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
                     if len_packet_type == self._0x12_METADATA_LENGTH:
