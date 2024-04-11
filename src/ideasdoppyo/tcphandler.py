@@ -37,6 +37,7 @@ For TCP, the hardware is configured as the network server, with the PC as client
 import numpy as np
 import socket
 import binascii
+import time
 
 
 class TCPhandler:
@@ -50,7 +51,7 @@ class TCPhandler:
         self.port = port
         tcp_s = socket.socket()
         tcp_s.connect((self.server_ip, self.port))
-        tcp_s.settimeout(1.0)
+        tcp_s.settimeout(3.0)
         self.tcp_s = tcp_s
 
         # General variables for all ASICs and systems
@@ -71,8 +72,9 @@ class TCPhandler:
 
         # TCP ReadBack
         self.spare_bytes = b''
-        self.auto_readback = False
+        self.auto_readback = [False, 0]
         self.not_readback = {}                              # packet_count: ((package meta data length, data length), (address, value))
+        self.now_readback = []
 
         # Length of header + metadata in readback packets
         self._0x12_METADATA_LENGTH = 10 + 2 + 1 
@@ -115,7 +117,7 @@ class TCPhandler:
 
     def setAutoReadBack(self, enable: bool) -> None:
         """Performes readback automatically after TCP write."""
-        self.auto_readback = enable
+        self.auto_readback[0] = enable
 
     def socketClose(self) -> None:
         """Closes TCP socket."""
@@ -134,40 +136,62 @@ class TCPhandler:
         return_val = True
 
         del_indexes = []
+        print(f'LENGTH OF NOT READBACK {len(self.not_readback)}')
+        print(self.not_readback)
         
         for packet in self.not_readback:
-            del_indexes.append(packet)
-            try:
-                len_packet_type, len_reg_data = self.not_readback[packet][0]
-                data = self._commonReadBack(len_packet_type + len_reg_data)
-                print(np.frombuffer(data, np.uint8))
-                if data:
-                    print(f'packet: {packet} -  len delindexes: {len(del_indexes)}')
-                    read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
-                    if len_packet_type == self._0x12_METADATA_LENGTH:
-                        READ_ADDR_INDEXES = (10, 12)            # FIXME These indexes are probably wrong if we dont receive full package...
-                        READ_VAL_INDEXES = 13               # And rest of pack
-                    elif len_packet_type == self._0xC4_METADATA_LENGTH:
-                        READ_ADDR_INDEXES = (12, 14)
-                        READ_VAL_INDEXES = 16
-                    else:
-                        print(f'WARNING! Unsupported readback packet!')
-                    read_address = int.from_bytes(data[READ_ADDR_INDEXES[0]:READ_ADDR_INDEXES[1]], byteorder='big')
-                    read_value = int.from_bytes(data[READ_VAL_INDEXES:], byteorder='big')
-                    if self.not_readback[read_packet_count][1] == (read_address, read_value): pass
-                    else:
-                        print(self.not_readback[read_packet_count][1], read_address, read_value)
-                        print(f'WARNING! UNEXPECTED RESULT.')
-                        return_val = False
-            except:
-                print(f'spare bytes?: {self.spare_bytes}')
-                pass
+            retry_count = 3
+            while retry_count > 0:
+                try:
+                    len_packet_type, len_reg_data = self.not_readback[packet][0]
+                    data = self._commonReadBack(len_packet_type + len_reg_data)
+                    if not data: print(f'No data.')
+                    if data:
+                        del_indexes.append(packet)
+                        if len(data) != len_packet_type + len_reg_data:
+                            print(f'DATA LENGTH IS NOT CORRECT!')
+                        #print(f'packet: {packet} -  len delindexes: {len(del_indexes)}')
+                        read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
+                        if len_packet_type == self._0x12_METADATA_LENGTH:
+                            READ_ADDR_INDEXES = (10, 12)            # FIXME These indexes are probably wrong if we dont receive full package...
+                            READ_VAL_INDEXES = 13               # And rest of pack
+                        elif len_packet_type == self._0xC4_METADATA_LENGTH:
+                            READ_ADDR_INDEXES = (12, 14)
+                            READ_VAL_INDEXES = 16
+                        else:
+                            print(f'WARNING! Unsupported readback packet!')
+                        read_address = int.from_bytes(data[READ_ADDR_INDEXES[0]:READ_ADDR_INDEXES[1]], byteorder='big')
+                        read_value = int.from_bytes(data[READ_VAL_INDEXES:], byteorder='big')
+                        if self.not_readback[read_packet_count][1] == (read_address, read_value): pass
+                        else:
+                            print(self.not_readback[read_packet_count][1], read_address, read_value)
+                            print(f'WARNING! UNEXPECTED RESULT.')
+                            return_val = False
+                        break
+                except:
+                    retry_count -= 1
+                    if retry_count == 0:
+                        print(f'Retry exhausted..')
+                    pass
         
         for i in del_indexes:
             del self.not_readback[i]
         
+        print(del_indexes)
+        
         if self.doPrint:
             print(f'N={len(del_indexes)} total packages received. Expected readback: {return_val}')
+        return return_val
+
+    def checkReadBack2(self) -> bool:
+        return_val = False
+        if self.now_readback == [a[1] for a in self.not_readback.values()]:
+            return_val = True
+            print(f'Readback is as expected!')
+        else:
+            print(f'ERROR: Readback is wrong!')
+        self.now_readback = []
+        self.not_readback = {}
         return return_val
 
     def _packetCountIncrement(self) -> None:
@@ -201,10 +225,15 @@ class TCPhandler:
             data += self.tcp_s.recv(1)
         spare_bytes_length = len(data) - expected_data_length
         self.spare_bytes = data[-spare_bytes_length:] if spare_bytes_length != 0 else b''
+        return_data = data[:-spare_bytes_length or None]
         if self.doPrint:
-            self.doPrinter.data_bytes = data[:-spare_bytes_length or None]      # If no spare: Full array is used.
+            self.doPrinter.data_bytes = return_data     # If no spare: Full array is used.
             print(self.doPrinter)
-        return data[:-spare_bytes_length or None]
+        #if self.auto_readback[0]:
+        if return_data[1] == 18: self.now_readback.append((int.from_bytes(return_data[10:12], byteorder='big'), int.from_bytes(return_data[13:], byteorder='big')))
+        elif return_data[1] == 196: self.now_readback.append((int.from_bytes(return_data[12:14], byteorder='big'), int.from_bytes(return_data[16:], byteorder='big')))
+        else: print(f'Unknown readback..')
+        return return_data
 
     def writeSysReg(self, reg_addr: hex, value: hex, len_reg_data: hex) -> bool:
         """
@@ -316,6 +345,12 @@ class TCPhandler:
             print(self.doPrinter)
         self.tcp_s.sendall(write_packet)
         self.not_readback[self.packet_count] = ((self._0xC4_METADATA_LENGTH, reg_length), (reg_addr, write_data))
+        if self.auto_readback[0]:
+            self.auto_readback[1] += 1
+            if self.auto_readback[1] == 50:
+                for _ in range(50):
+                    self.getASICSPIReadBack(reg_length)
+                self.auto_readback[1] = 0
         self._packetCountIncrement()
 
     def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
