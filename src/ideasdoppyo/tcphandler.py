@@ -72,7 +72,7 @@ class TCPhandler:
 
         # TCP ReadBack
         self.spare_bytes = b''
-        self.auto_readback = [False, 0]
+        self.auto_readback = [False, 50]
         self.not_readback = {}                              # packet_count: ((package meta data length, data length), (address, value))
         self.now_readback = []
 
@@ -183,16 +183,30 @@ class TCPhandler:
             print(f'N={len(del_indexes)} total packages received. Expected readback: {return_val}')
         return return_val
 
-    def checkReadBack2(self) -> bool:
-        return_val = False
+    def checkReadBack2(self, finish_readback: bool=True) -> list:
+        """
+        Args:
+            finish_readback: if self.auto_readback[1] !=0, read back the rest.
+        
+        Returns:
+            return_val: 
+        """
+        wrongly_programmed = []
         if self.now_readback == [a[1] for a in self.not_readback.values()]:
-            return_val = True
+            wrongly_programmed = [...]              # Fixme
             print(f'Readback is as expected!')
         else:
             print(f'ERROR: Readback is wrong!')
         self.now_readback = []
         self.not_readback = {}
-        return return_val
+        return wrongly_programmed
+    
+    def finishReadBack(self, len_reg_data: int) -> list:
+        """TODO: Add description"""
+        to_be_read_back = len([a[1] for a in self.not_readback.values()]) - len(self.now_readback)
+        for _ in range(to_be_read_back):                # Fixme
+            self.getASICSPIReadBack(len_reg_data)
+
 
     def _packetCountIncrement(self) -> None:
         """Updates packet_count by 1."""
@@ -229,7 +243,6 @@ class TCPhandler:
         if self.doPrint:
             self.doPrinter.data_bytes = return_data     # If no spare: Full array is used.
             print(self.doPrinter)
-        #if self.auto_readback[0]:
         if return_data[1] == 18: self.now_readback.append((int.from_bytes(return_data[10:12], byteorder='big'), int.from_bytes(return_data[13:], byteorder='big')))
         elif return_data[1] == 196: self.now_readback.append((int.from_bytes(return_data[12:14], byteorder='big'), int.from_bytes(return_data[16:], byteorder='big')))
         else: print(f'Unknown readback..')
@@ -346,11 +359,13 @@ class TCPhandler:
         self.tcp_s.sendall(write_packet)
         self.not_readback[self.packet_count] = ((self._0xC4_METADATA_LENGTH, reg_length), (reg_addr, write_data))
         if self.auto_readback[0]:
-            self.auto_readback[1] += 1
-            if self.auto_readback[1] == 50:
+            self.auto_readback[1] -= 1
+            rest_packets = []
+            if self.auto_readback[1] == 0:
+                self.to_be_read_back = 50
                 for _ in range(50):
                     self.getASICSPIReadBack(reg_length)
-                self.auto_readback[1] = 0
+                self.auto_readback[1] = 50
         self._packetCountIncrement()
 
     def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
