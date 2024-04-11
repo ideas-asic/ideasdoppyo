@@ -123,8 +123,10 @@ class TCPhandler:
         """Closes TCP socket."""
         self.tcp_s.close()
 
-    def checkReadBack(self) -> bool:
+    def _checkReadBack(self) -> bool:
         """
+        FIXME! This function is not fully working.
+        
         Performs readback on packets that are not yet read back. Validates readback based on packet_number.
 
         For write packages (0x10->0x12 and 0xC2->0xC4), we verify correct address and correct value.
@@ -183,7 +185,7 @@ class TCPhandler:
             print(f'N={len(del_indexes)} total packages received. Expected readback: {return_val}')
         return return_val
 
-    def checkReadBack2(self, finish_readback: bool=True) -> list:
+    def checkReadBack(self, finish_readback: bool=True) -> list:
         """
         Args:
             finish_readback: if self.auto_readback[1] !=0, read back the rest.
@@ -192,11 +194,19 @@ class TCPhandler:
             return_val: 
         """
         wrongly_programmed = []
-        if self.now_readback == [a[1] for a in self.not_readback.values()]:
-            wrongly_programmed = [...]              # Fixme
-            print(f'Readback is as expected!')
-        else:
-            print(f'ERROR: Readback is wrong!')
+        not_readback_addr_val = [a[1] for a in self.not_readback.values()]
+        if len(self.now_readback) == len(not_readback_addr_val):
+            if self.now_readback == not_readback_addr_val:
+                if self.doPrint:
+                    print(f'Readback is as expected!')
+            else:
+                for i, j in zip(self.now_readback, not_readback_addr_val):
+                    if i != j:
+                        wrongly_programmed.append(j[0])
+                        if self.doPrint:
+                            print(f'ERROR: Readback is wrong!: {j[0]}')
+        if self.doPrint:
+            print(f'Clearing now_readback and not_readback.')
         self.now_readback = []
         self.not_readback = {}
         return wrongly_programmed
