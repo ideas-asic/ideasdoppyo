@@ -216,6 +216,7 @@ class TCPhandler:
         to_be_read_back = len([a[1] for a in self.not_readback.values()]) - len(self.now_readback)
         for _ in range(to_be_read_back):                # Fixme
             self.getASICSPIReadBack(len_reg_data)
+        self.auto_readback = [False, 50]
 
 
     def _packetCountIncrement(self) -> None:
