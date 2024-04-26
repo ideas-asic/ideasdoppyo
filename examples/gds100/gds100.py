@@ -14,7 +14,7 @@ are met:
 3. Neither the name of the copyright holder nor the names of its contributors
    may be used to endorse or promote products derived from this software
    without specific prior written permission.
-   
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS”
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -42,8 +42,9 @@ tcp.tcp_s.settimeout(2.0)
 # Write and read system register
 MARES_addr = 0x0F08
 enable_addr = 0x0F00
-tcp.writeSysReg(address=enable_addr, value=15, data_length=1)
-tcp.getSystemReadBack(200)
+
+tcp.writeSysReg(enable_addr, 15, 1)
+tcp.getSysReadBack(1)
 
 # Write and read ASIC shift register
 # Default configuration.
@@ -51,6 +52,6 @@ shift_reg = '0000000000000000000000000000000000000000000000000000000000000000000
 
 shift_reg_bytes = int(shift_reg, 16).to_bytes(int(len(shift_reg)/2), 'big')
 
-tcp.writeReadShiftRegister(shift_reg_bytes)
-data = tcp.getSystemReadBack(2000)        # FIXME : use getShiftRegisterReadBack
+tcp.writeReadShiftReg(shift_reg_bytes)
+data = tcp.getShiftRegReadBack(100)
 tcp.socketClose()
