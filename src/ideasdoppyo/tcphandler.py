@@ -123,75 +123,12 @@ class TCPhandler:
         """Closes TCP socket."""
         self.tcp_s.close()
 
-    def _checkReadBack(self) -> bool:
+    def checkReadBack(self) -> list:
         """
-        FIXME! This function is not fully working.
-        
-        Performs readback on packets that are not yet read back. Validates readback based on packet_number.
-
-        For write packages (0x10->0x12 and 0xC2->0xC4), we verify correct address and correct value.
-        For read packages (TODO 0xC3?) we only check that the correct address is read out. 
+        Compares write dictionary (not_readback) with read back dictionary (now_readback). 
         
         Returns:
-            return_val: If read or write command was successful.
-        """
-        return_val = True
-
-        del_indexes = []
-        print(f'LENGTH OF NOT READBACK {len(self.not_readback)}')
-        print(self.not_readback)
-        
-        for packet in self.not_readback:
-            retry_count = 3
-            while retry_count > 0:
-                try:
-                    len_packet_type, len_reg_data = self.not_readback[packet][0]
-                    data = self._commonReadBack(len_packet_type + len_reg_data)
-                    if not data: print(f'No data.')
-                    if data:
-                        del_indexes.append(packet)
-                        if len(data) != len_packet_type + len_reg_data:
-                            print(f'DATA LENGTH IS NOT CORRECT!')
-                        #print(f'packet: {packet} -  len delindexes: {len(del_indexes)}')
-                        read_packet_count = '{0:014b}'.format(int.from_bytes(data[2:4], byteorder='big') & 0b0011111111111111)
-                        if len_packet_type == self._0x12_METADATA_LENGTH:
-                            READ_ADDR_INDEXES = (10, 12)            # FIXME These indexes are probably wrong if we dont receive full package...
-                            READ_VAL_INDEXES = 13               # And rest of pack
-                        elif len_packet_type == self._0xC4_METADATA_LENGTH:
-                            READ_ADDR_INDEXES = (12, 14)
-                            READ_VAL_INDEXES = 16
-                        else:
-                            print(f'WARNING! Unsupported readback packet!')
-                        read_address = int.from_bytes(data[READ_ADDR_INDEXES[0]:READ_ADDR_INDEXES[1]], byteorder='big')
-                        read_value = int.from_bytes(data[READ_VAL_INDEXES:], byteorder='big')
-                        if self.not_readback[read_packet_count][1] == (read_address, read_value): pass
-                        else:
-                            print(self.not_readback[read_packet_count][1], read_address, read_value)
-                            print(f'WARNING! UNEXPECTED RESULT.')
-                            return_val = False
-                        break
-                except:
-                    retry_count -= 1
-                    if retry_count == 0:
-                        print(f'Retry exhausted..')
-                    pass
-        
-        for i in del_indexes:
-            del self.not_readback[i]
-        
-        print(del_indexes)
-        
-        if self.doPrint:
-            print(f'N={len(del_indexes)} total packages received. Expected readback: {return_val}')
-        return return_val
-
-    def checkReadBack(self, finish_readback: bool=True) -> list:
-        """
-        Args:
-            finish_readback: if self.auto_readback[1] !=0, read back the rest.
-        
-        Returns:
-            return_val: 
+            wrongly_programmed: Addresses. Note: The address may be a pulse register!
         """
         wrongly_programmed = []
         not_readback_addr_val = [a[1] for a in self.not_readback.values()]
@@ -209,14 +146,19 @@ class TCPhandler:
             print(f'Clearing now_readback and not_readback.')
         self.now_readback = []
         self.not_readback = {}
+        wrongly_programmed = [hex(val) for val in wrongly_programmed]
         return wrongly_programmed
     
     def finishReadBack(self, len_reg_data: int) -> list:
-        """TODO: Add description"""
+        """
+        Reads back packages not currently read back.
+
+        To be used after 'fast readout' (auto_readback[0]=True).
+        """
         to_be_read_back = len([a[1] for a in self.not_readback.values()]) - len(self.now_readback)
-        for _ in range(to_be_read_back):                # Fixme
-            self.getASICSPIReadBack(len_reg_data)
-        self.auto_readback = [False, 50]
+        for _ in range(to_be_read_back):
+            self.getAsicSpiReadBack(len_reg_data)
+        self.auto_readback = [False, 50]                # Resets auto_readback
 
 
     def _packetCountIncrement(self) -> None:
@@ -302,9 +244,10 @@ class TCPhandler:
         if self.doPrint:
             self.doPrinter.data_bytes = write_packet
             print(self.doPrinter)
+        self.not_readback[self.packet_count] = ((self._0x12_METADATA_LENGTH, ...), (reg_addr, None))        # TODO: To be reviewed
         self._packetCountIncrement()
 
-    def getSystemReadBack(self, len_reg_data: int) -> bytes:
+    def getSysReadBack(self, len_reg_data: int) -> bytes:
         """
         Response packet from system to system write/reads. Packet type 0x12.
 
@@ -315,7 +258,7 @@ class TCPhandler:
         data = self._commonReadBack(expected_data_length)     
         return data
 
-    def writeReadShiftRegister(self, configuration_data: bytes) -> None:
+    def writeReadShiftReg(self, configuration_data: bytes) -> None:
         """
         Write/read ASICs with shift registers. Packet type 0xC0.
 
@@ -335,7 +278,7 @@ class TCPhandler:
             print(self.doPrinter)
         self._packetCountIncrement()
 
-    def getShiftRegisterReadBack(self, len_reg_data: int) -> bytes:
+    def getShiftRegReadBack(self, len_reg_data: int) -> bytes:
         """
         Response packet from system to ASIC shift register write/read. Packet type 0xC1.
 
@@ -346,7 +289,7 @@ class TCPhandler:
         data = self._commonReadBack(expected_data_length)
         return data
 
-    def writeAsicSpiRegister(self, reg_addr: hex, reg_length: int, asic_bit_length: int, write_data: hex) -> None:
+    def writeAsicSpiReg(self, reg_addr: hex, reg_length: int, asic_bit_length: int, write_data: hex) -> None:
         """
         Write ASIC SPI register. Packet type 0xC2.
 
@@ -371,15 +314,14 @@ class TCPhandler:
         self.not_readback[self.packet_count] = ((self._0xC4_METADATA_LENGTH, reg_length), (reg_addr, write_data))
         if self.auto_readback[0]:
             self.auto_readback[1] -= 1
-            rest_packets = []
             if self.auto_readback[1] == 0:
                 self.to_be_read_back = 50
                 for _ in range(50):
-                    self.getASICSPIReadBack(reg_length)
+                    self.getAsicSpiReadBack(reg_length)
                 self.auto_readback[1] = 50
         self._packetCountIncrement()
 
-    def readAsicSpiRegister(self, reg_addr: hex, reg_bit_length: int) -> None:
+    def readAsicSpiReg(self, reg_addr: hex, reg_bit_length: int) -> None:
         """
         Read ASIC SPI Register. Packet type 0xC3.
 
@@ -400,7 +342,7 @@ class TCPhandler:
             print(self.doPrinter)
         self._packetCountIncrement()
 
-    def getASICSPIReadBack(self, len_reg_data) -> bytes:
+    def getAsicSpiReadBack(self, len_reg_data) -> bytes:
         """
         Response packet from system to ASIC SPI write/reads. Packet type 0xC4.
 

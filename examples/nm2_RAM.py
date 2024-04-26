@@ -39,29 +39,29 @@ tcp.doPrint = False
 print(f'Reset + SPI registers: ', end=' ')
 # Toggle reset ASIC pin from system
 tcp.writeSysReg(reg_addr=0xFFA0, value=0, len_reg_data=1)
-data = tcp.getSystemReadBack(len_reg_data=1)
+data = tcp.getSysReadBack(len_reg_data=1)
 tcp.writeSysReg(reg_addr=0xFFA0, value=1, len_reg_data=1)
-data = tcp.getSystemReadBack(len_reg_data=1)
+data = tcp.getSysReadBack(len_reg_data=1)
 
 tcp.writeSysReg(reg_addr=0x0C01, value=4, len_reg_data=1)
-data = tcp.getSystemReadBack(len_reg_data=1)
+data = tcp.getSysReadBack(len_reg_data=1)
 tcp.writeSysReg(reg_addr=0xF017, value=0, len_reg_data=4)
-data = tcp.getSystemReadBack(len_reg_data=4)
+data = tcp.getSysReadBack(len_reg_data=4)
 print('done')
 
 # Enable ASIC SPI
-tcp.writeAsicSpiRegister(reg_addr=0xFA00, reg_length=1, asic_bit_length=8, write_data=5)
-data = tcp.getASICSPIReadBack(len_reg_data=1)
-tcp.writeAsicSpiRegister(reg_addr=0xFA01, reg_length=1, asic_bit_length=8, write_data=26)
-data = tcp.getASICSPIReadBack(len_reg_data=1)
+tcp.writeAsicSpiReg(reg_addr=0xFA00, reg_length=1, asic_bit_length=8, write_data=5)
+data = tcp.getAsicSpiReadBack(len_reg_data=1)
+tcp.writeAsicSpiReg(reg_addr=0xFA01, reg_length=1, asic_bit_length=8, write_data=26)
+data = tcp.getAsicSpiReadBack(len_reg_data=1)
 
 wrongly_programmed = tcp.checkReadBack()
 print(wrongly_programmed, end= ' ')
 
 print(f'Programming instruction RAM:', end=' ')
 tcp.setAutoReadBack(True)
-for i in range(8192, 8594):
-   tcp.writeAsicSpiRegister(reg_addr=i, reg_length=1, asic_bit_length=8, write_data=3)
+for i in range(8192, 8394):
+   tcp.writeAsicSpiReg(reg_addr=i, reg_length=1, asic_bit_length=8, write_data=3)
 tcp.finishReadBack(len_reg_data=1)
 wrongly_programmed = tcp.checkReadBack()
 print(wrongly_programmed, end=' ')
@@ -69,8 +69,12 @@ print('done')
 
 #tx_ch7_0_rst 39 0027 7:0 0 w/pulse Reset Channel 0->7 / Channel independent / Puls
 print(f'Programming pulse register. Wrongly programmed:', end=' ')
-tcp.writeAsicSpiRegister(reg_addr=0x0027, reg_length=1, asic_bit_length=8, write_data=1)
-data = tcp.getASICSPIReadBack(len_reg_data=1)
+tcp.readSysReg(0xF00D)
+tcp.getSysReadBack(2)
+tcp.writeAsicSpiReg(reg_addr=8192, reg_length=1, asic_bit_length=8, write_data=3)
+data = tcp.getAsicSpiReadBack(len_reg_data=1)
+tcp.writeAsicSpiReg(reg_addr=0x005F, reg_length=1, asic_bit_length=8, write_data=255)
+data = tcp.getAsicSpiReadBack(len_reg_data=1)
 wrongly_programmed = tcp.checkReadBack()
 print(wrongly_programmed, end=' ')
 print('done')
