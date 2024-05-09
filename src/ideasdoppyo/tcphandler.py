@@ -163,7 +163,7 @@ class TCPhandler:
 
     def _packetCountIncrement(self) -> None:
         """Updates packet_count by 1."""
-        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)
+        self.packet_count = '{0:014b}'.format(int(self.packet_count, 2) + 1)[:-14]
 
     def _getPacketHeader(self, packet_type: hex, len_reg_data: hex) -> bytes:
         """
